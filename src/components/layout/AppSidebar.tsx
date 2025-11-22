@@ -45,8 +45,23 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-r border-sidebar-border">
+    <Sidebar className="border-r-2 border-sidebar-border bg-gradient-to-b from-sidebar-background to-sidebar-background/95">
       <SidebarContent>
+        {/* Logo no topo da sidebar */}
+        <div className="px-4 py-6 border-b border-sidebar-border/50">
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-secondary shadow-md">
+              <span className="text-xl font-bold text-white">A</span>
+            </div>
+            {open && (
+              <div>
+                <p className="text-sm font-bold text-sidebar-foreground">ALTESE</p>
+                <p className="text-xs text-sidebar-foreground/70">Sales Sync</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-foreground/70 px-4 py-4 text-xs font-semibold uppercase tracking-wider">
             Menu Principal
@@ -59,8 +74,8 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end
-                      className="flex items-center gap-3 px-4 py-2.5 text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent font-medium"
+                      className="flex items-center gap-3 px-4 py-3 text-sidebar-foreground transition-all hover:bg-sidebar-accent rounded-lg mx-2"
+                      activeClassName="bg-gradient-to-r from-accent to-secondary text-white font-medium shadow-md"
                     >
                       <item.icon className="h-5 w-5" />
                       {open && <span>{item.title}</span>}
@@ -72,7 +87,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <div className="mt-auto">
+        <div className="mt-auto border-t border-sidebar-border/50 pt-4">
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -81,8 +96,8 @@ export function AppSidebar() {
                     <SidebarMenuButton asChild>
                       <NavLink
                         to={item.url}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
-                        activeClassName="bg-sidebar-accent font-medium"
+                        className="flex items-center gap-3 px-4 py-3 text-sidebar-foreground transition-all hover:bg-sidebar-accent rounded-lg mx-2"
+                        activeClassName="bg-gradient-to-r from-primary to-secondary text-white font-medium shadow-md"
                       >
                         <item.icon className="h-5 w-5" />
                         {open && <span>{item.title}</span>}
@@ -94,7 +109,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <button
                       onClick={handleLogout}
-                      className="flex w-full items-center gap-3 px-4 py-2.5 text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
+                      className="flex w-full items-center gap-3 px-4 py-3 text-sidebar-foreground transition-all hover:bg-destructive/20 hover:text-destructive rounded-lg mx-2"
                     >
                       <LogOut className="h-5 w-5" />
                       {open && <span>Sair</span>}
