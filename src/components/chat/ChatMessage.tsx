@@ -9,6 +9,7 @@ interface ChatMessageProps {
   createdAt: string;
   attachmentUrl?: string | null;
   attachmentType?: string | null;
+  attachmentFilename?: string | null;
 }
 
 const remetenteConfig = {
@@ -42,20 +43,21 @@ const remetenteConfig = {
   },
 };
 
-export function ChatMessage({ remetenteTipo, conteudo, createdAt, attachmentUrl, attachmentType }: ChatMessageProps) {
+export function ChatMessage({ remetenteTipo, conteudo, createdAt, attachmentUrl, attachmentType, attachmentFilename }: ChatMessageProps) {
   const config = remetenteConfig[remetenteTipo];
   const Icon = config.icon;
 
   const isImage = attachmentType === 'image';
   const isDocument = attachmentType === 'document';
 
-  // Extract file name and extension from URL
-  const getFileInfo = (url: string) => {
-    const fileName = url.split('/').pop() || 'documento';
-    const decodedName = decodeURIComponent(fileName);
+  // Extract file name and extension from filename or URL
+  const getFileInfo = (url: string, filename?: string | null) => {
+    // Use the actual filename from WhatsApp if available
+    const actualFileName = filename || url.split('/').pop() || 'documento';
+    const decodedName = decodeURIComponent(actualFileName);
     const nameParts = decodedName.split('.');
     const extension = nameParts.length > 1 ? nameParts[nameParts.length - 1].toUpperCase() : 'FILE';
-    const displayName = nameParts[0].split('/').pop() || 'Documento';
+    const displayName = nameParts.length > 1 ? nameParts.slice(0, -1).join('.') : decodedName;
     
     return { fileName: decodedName, extension, displayName };
   };
@@ -71,8 +73,8 @@ export function ChatMessage({ remetenteTipo, conteudo, createdAt, attachmentUrl,
     return File;
   };
 
-  const fileInfo = attachmentUrl && isDocument ? getFileInfo(attachmentUrl) : null;
-  const DocumentIcon = attachmentUrl && isDocument ? getDocumentIcon(attachmentUrl) : File;
+  const fileInfo = attachmentUrl && isDocument ? getFileInfo(attachmentUrl, attachmentFilename) : null;
+  const DocumentIcon = attachmentUrl && isDocument ? getDocumentIcon(attachmentFilename || attachmentUrl) : File;
 
   return (
     <div className={cn("flex gap-3 mb-4", config.align === "right" && "flex-row-reverse")}>

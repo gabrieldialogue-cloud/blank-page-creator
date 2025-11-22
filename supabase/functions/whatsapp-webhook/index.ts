@@ -248,6 +248,7 @@ serve(async (req) => {
               remetente_tipo: 'cliente',
               conteudo: finalContent,
               created_at: timestamp,
+              attachment_filename: message.document?.filename || message.image?.filename || null,
               attachment_url: attachmentUrl,
               attachment_type: attachmentType,
             });
