@@ -1,12 +1,14 @@
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Bot, User, Headphones, UserCircle } from "lucide-react";
+import { Bot, User, Headphones, UserCircle, File } from "lucide-react";
 
 interface ChatMessageProps {
   remetenteTipo: "ia" | "cliente" | "vendedor" | "supervisor";
   conteudo: string;
   createdAt: string;
+  attachmentUrl?: string | null;
+  attachmentType?: string | null;
 }
 
 const remetenteConfig = {
@@ -40,9 +42,12 @@ const remetenteConfig = {
   },
 };
 
-export function ChatMessage({ remetenteTipo, conteudo, createdAt }: ChatMessageProps) {
+export function ChatMessage({ remetenteTipo, conteudo, createdAt, attachmentUrl, attachmentType }: ChatMessageProps) {
   const config = remetenteConfig[remetenteTipo];
   const Icon = config.icon;
+
+  const isImage = attachmentType === 'image';
+  const isDocument = attachmentType === 'document';
 
   return (
     <div className={cn("flex gap-3 mb-4", config.align === "right" && "flex-row-reverse")}>
@@ -58,9 +63,38 @@ export function ChatMessage({ remetenteTipo, conteudo, createdAt }: ChatMessageP
           </span>
         </div>
         
-        <div className={cn("rounded-lg px-4 py-2.5", config.bgClass, config.textClass)}>
-          <p className="text-sm whitespace-pre-wrap break-words">{conteudo}</p>
-        </div>
+        {attachmentUrl && isImage && (
+          <div className="rounded-lg overflow-hidden border border-border max-w-sm mb-2">
+            <img 
+              src={attachmentUrl} 
+              alt="Anexo"
+              className="w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={() => window.open(attachmentUrl, '_blank')}
+            />
+          </div>
+        )}
+
+        {attachmentUrl && isDocument && (
+          <a 
+            href={attachmentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-4 py-2.5 border border-border hover:bg-accent/50 transition-colors mb-2",
+              config.bgClass,
+              config.textClass
+            )}
+          >
+            <File className="h-4 w-4" />
+            <span className="text-sm">Documento anexado</span>
+          </a>
+        )}
+        
+        {conteudo && (
+          <div className={cn("rounded-lg px-4 py-2.5", config.bgClass, config.textClass)}>
+            <p className="text-sm whitespace-pre-wrap break-words">{conteudo}</p>
+          </div>
+        )}
       </div>
     </div>
   );

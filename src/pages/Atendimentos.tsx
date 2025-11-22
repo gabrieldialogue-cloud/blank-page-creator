@@ -17,8 +17,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Send } from "lucide-react";
+import { Send, Paperclip, X, Image as ImageIcon, File } from "lucide-react";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 
 type DetailType = 
   | "ia_respondendo" 
@@ -50,12 +51,16 @@ export default function Atendimentos() {
   const [mensagensVendedor, setMensagensVendedor] = useState<any[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [isClientTyping, setIsClientTyping] = useState(false);
   const [isTypingVendedor, setIsTypingVendedor] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Initialize notification sound
   useEffect(() => {
@@ -532,6 +537,104 @@ export default function Atendimentos() {
     }
   };
 
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (20MB)
+    if (file.size > 20971520) {
+      toast.error("Arquivo muito grande. Máximo de 20MB.");
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf', 
+                          'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                          'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+    
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Tipo de arquivo não suportado.");
+      return;
+    }
+
+    setSelectedFile(file);
+  };
+
+  // Upload file and send message
+  const handleSendWithFile = async () => {
+    if (!selectedFile || !selectedAtendimentoIdVendedor || !vendedorId) return;
+
+    setIsUploading(true);
+    setIsTypingVendedor(false);
+
+    try {
+      // Upload file to storage
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${selectedAtendimentoIdVendedor}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('chat-files')
+        .upload(fileName, selectedFile);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('chat-files')
+        .getPublicUrl(fileName);
+
+      // Determine attachment type
+      const attachmentType = selectedFile.type.startsWith('image/') ? 'image' : 'document';
+
+      // Save message with attachment
+      const { error: messageError } = await supabase
+        .from('mensagens')
+        .insert({
+          atendimento_id: selectedAtendimentoIdVendedor,
+          remetente_id: vendedorId,
+          remetente_tipo: 'vendedor',
+          conteudo: messageInput.trim() || '',
+          attachment_url: publicUrl,
+          attachment_type: attachmentType
+        });
+
+      if (messageError) throw messageError;
+
+      setMessageInput("");
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      
+      toast.success("Arquivo enviado com sucesso!");
+
+      // Scroll to bottom
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Erro ao enviar arquivo:', error);
+      toast.error("Erro ao enviar arquivo. Tente novamente.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Filter atendimentos by search term
+  const filteredAtendimentosVendedor = atendimentosVendedor.filter((atendimento) => {
+    const searchLower = searchTerm.toLowerCase();
+    const clienteNome = atendimento.clientes?.nome?.toLowerCase() || '';
+    const clienteTelefone = atendimento.clientes?.telefone?.toLowerCase() || '';
+    const marcaVeiculo = atendimento.marca_veiculo?.toLowerCase() || '';
+    
+    return clienteNome.includes(searchLower) || 
+           clienteTelefone.includes(searchLower) ||
+           marcaVeiculo.includes(searchLower);
+  });
+
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
       ia_respondendo: { label: "IA Respondendo", variant: "secondary" },
@@ -804,7 +907,7 @@ export default function Atendimentos() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 px-4 py-2 text-lg font-bold">
-                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : `${atendimentosVendedor.length} ativas`}
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : `${filteredAtendimentosVendedor.length} ativas`}
                     </Badge>
                     <Badge className="bg-gradient-to-r from-primary to-secondary text-white px-4 py-1">
                       Chat ao Vivo
@@ -830,40 +933,56 @@ export default function Atendimentos() {
                       <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
                           <MessageSquare className="h-5 w-5" />
-                          Conversas Ativas ({atendimentosVendedor.length})
+                          Conversas Ativas ({filteredAtendimentosVendedor.length})
                         </CardTitle>
+                        <div className="mt-3">
+                          <Input
+                            type="text"
+                            placeholder="Buscar por nome ou telefone..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="h-9"
+                          />
+                        </div>
                       </CardHeader>
                       <CardContent className="p-0">
                         <ScrollArea className="h-[500px]">
-                          <div className="space-y-1 p-4">
-                            {atendimentosVendedor.map((atendimento) => (
-                              <button
-                                key={atendimento.id}
-                                onClick={() => setSelectedAtendimentoIdVendedor(atendimento.id)}
-                                className={`w-full text-left p-4 rounded-lg transition-all hover:bg-accent ${
-                                  selectedAtendimentoIdVendedor === atendimento.id ? 'bg-accent border-2 border-primary' : 'border border-border'
-                                }`}
-                              >
-                                <div className="flex items-start justify-between mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4 text-muted-foreground" />
-                                    <span className="font-semibold text-sm">
-                                      {atendimento.clientes?.nome || "Cliente"}
+                          {filteredAtendimentosVendedor.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full p-8 text-muted-foreground">
+                              <MessageSquare className="h-8 w-8 mb-2 opacity-50" />
+                              <p className="text-sm">Nenhum atendimento encontrado</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-1 p-4">
+                              {filteredAtendimentosVendedor.map((atendimento) => (
+                                <button
+                                  key={atendimento.id}
+                                  onClick={() => setSelectedAtendimentoIdVendedor(atendimento.id)}
+                                  className={`w-full text-left p-4 rounded-lg transition-all hover:bg-accent ${
+                                    selectedAtendimentoIdVendedor === atendimento.id ? 'bg-accent border-2 border-primary' : 'border border-border'
+                                  }`}
+                                >
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <User className="h-4 w-4 text-muted-foreground" />
+                                      <span className="font-semibold text-sm">
+                                        {atendimento.clientes?.nome || "Cliente"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mb-2">
+                                    {atendimento.marca_veiculo} {atendimento.modelo_veiculo}
+                                  </p>
+                                  <div className="flex items-center justify-between">
+                                    {getStatusBadge(atendimento.status)}
+                                    <span className="text-xs text-muted-foreground">
+                                      {format(new Date(atendimento.created_at), "dd/MM HH:mm", { locale: ptBR })}
                                     </span>
                                   </div>
-                                </div>
-                                <p className="text-xs text-muted-foreground mb-2">
-                                  {atendimento.marca_veiculo} {atendimento.modelo_veiculo}
-                                </p>
-                                <div className="flex items-center justify-between">
-                                  {getStatusBadge(atendimento.status)}
-                                  <span className="text-xs text-muted-foreground">
-                                    {format(new Date(atendimento.created_at), "dd/MM HH:mm", { locale: ptBR })}
-                                  </span>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </ScrollArea>
                       </CardContent>
                     </Card>
@@ -905,6 +1024,8 @@ export default function Atendimentos() {
                                   remetenteTipo={mensagem.remetente_tipo}
                                   conteudo={mensagem.conteudo}
                                   createdAt={mensagem.created_at}
+                                  attachmentUrl={mensagem.attachment_url}
+                                  attachmentType={mensagem.attachment_type}
                                 />
                               ))}
                               {isClientTyping && (
@@ -920,22 +1041,70 @@ export default function Atendimentos() {
                         {/* Input Area */}
                         {selectedAtendimentoIdVendedor && (
                           <div className="border-t p-4 bg-muted/30">
+                            {/* File Preview */}
+                            {selectedFile && (
+                              <div className="mb-3 p-3 bg-accent/10 border border-accent/30 rounded-lg flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  {selectedFile.type.startsWith('image/') ? (
+                                    <ImageIcon className="h-5 w-5 text-accent" />
+                                  ) : (
+                                    <File className="h-5 w-5 text-accent" />
+                                  )}
+                                  <span className="text-sm font-medium truncate max-w-[200px]">
+                                    {selectedFile.name}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    ({(selectedFile.size / 1024).toFixed(1)} KB)
+                                  </span>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => {
+                                    setSelectedFile(null);
+                                    if (fileInputRef.current) {
+                                      fileInputRef.current.value = "";
+                                    }
+                                  }}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                            
                             <div className="flex gap-2">
+                              <Input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,.doc,.docx,.xls,.xlsx"
+                                onChange={handleFileSelect}
+                                className="hidden"
+                              />
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-[60px] w-[60px] shrink-0"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading || isSending}
+                              >
+                                <Paperclip className="h-5 w-5" />
+                              </Button>
                               <Textarea
                                 value={messageInput}
                                 onChange={handleInputChange}
                                 onKeyPress={handleKeyPress}
                                 placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
                                 className="min-h-[60px] max-h-[120px] resize-none"
-                                disabled={isSending}
+                                disabled={isSending || isUploading}
                               />
                               <Button
-                                onClick={handleSendMessage}
-                                disabled={!messageInput.trim() || isSending}
+                                onClick={selectedFile ? handleSendWithFile : handleSendMessage}
+                                disabled={(!messageInput.trim() && !selectedFile) || isSending || isUploading}
                                 size="icon"
                                 className="h-[60px] w-[60px] shrink-0"
                               >
-                                {isSending ? (
+                                {(isSending || isUploading) ? (
                                   <Loader2 className="h-5 w-5 animate-spin" />
                                 ) : (
                                   <Send className="h-5 w-5" />
@@ -944,6 +1113,7 @@ export default function Atendimentos() {
                             </div>
                             <p className="text-xs text-muted-foreground mt-2">
                               {messageInput.length}/1000 caracteres
+                              {selectedFile && " • Arquivo selecionado"}
                             </p>
                           </div>
                         )}
