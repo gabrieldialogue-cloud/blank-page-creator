@@ -1,4 +1,4 @@
-import { Home, MessageSquare, FileText, TrendingUp, Settings, User, LogOut, Shield, Users, AlertCircle } from "lucide-react";
+import { Home, MessageSquare, FileText, Settings, User, LogOut, Shield, Users, AlertCircle } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -22,7 +22,6 @@ import { AlteseLogoIcon, AlteseLogoText } from "./AlteseLogoIcon";
 const menuItems = [
   { title: "Atendimentos", url: "/", icon: MessageSquare },
   { title: "Orçamentos", url: "/orcamentos", icon: FileText },
-  { title: "Pós-venda", url: "/pos-venda", icon: TrendingUp },
   { title: "Contatos", url: "/contatos", icon: Users },
 ];
 
