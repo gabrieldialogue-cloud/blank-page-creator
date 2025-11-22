@@ -196,6 +196,8 @@ export type Database = {
       mensagens: {
         Row: {
           atendimento_id: string | null
+          attachment_type: string | null
+          attachment_url: string | null
           conteudo: string
           created_at: string | null
           id: string
@@ -204,6 +206,8 @@ export type Database = {
         }
         Insert: {
           atendimento_id?: string | null
+          attachment_type?: string | null
+          attachment_url?: string | null
           conteudo: string
           created_at?: string | null
           id?: string
@@ -212,6 +216,8 @@ export type Database = {
         }
         Update: {
           atendimento_id?: string | null
+          attachment_type?: string | null
+          attachment_url?: string | null
           conteudo?: string
           created_at?: string | null
           id?: string
