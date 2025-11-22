@@ -64,11 +64,24 @@ serve(async (req) => {
 
           if (existingCliente) {
             cliente = existingCliente;
+            
+            // Update cliente name if we have profile name from WhatsApp
+            const profileName = value?.contacts?.[0]?.profile?.name;
+            if (profileName && existingCliente.nome.startsWith('Cliente ')) {
+              await supabase
+                .from('clientes')
+                .update({ nome: profileName })
+                .eq('id', existingCliente.id);
+              cliente.nome = profileName;
+            }
           } else {
+            // Get profile name from WhatsApp contact info
+            const profileName = value?.contacts?.[0]?.profile?.name || `Cliente ${from}`;
+            
             const { data: newCliente, error: clienteError } = await supabase
               .from('clientes')
               .insert({
-                nome: `Cliente ${from}`,
+                nome: profileName,
                 telefone: from,
               })
               .select()
