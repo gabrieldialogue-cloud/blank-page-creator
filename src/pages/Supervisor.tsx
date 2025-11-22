@@ -145,9 +145,9 @@ export default function Supervisor() {
   };
 
   const calcularMetricas = (vendedoresList: Vendedor[]) => {
-    const metrics: VendedorMetrics[] = vendedoresList
-      .filter(v => vendedoresAtribuidos.includes(v.id))
-      .map(vendedor => {
+    const filteredVendedores = vendedoresList.filter(v => vendedoresAtribuidos.includes(v.id));
+    
+    const metrics: VendedorMetrics[] = filteredVendedores.map(vendedor => {
         const atendimentosVendedor = atendimentos.filter(
           a => a.vendedor_fixo_id === vendedor.id
         );
@@ -195,7 +195,7 @@ export default function Supervisor() {
   };
 
   useEffect(() => {
-    if (atendimentos.length > 0 && vendedores.length > 0 && vendedoresAtribuidos.length > 0) {
+    if (vendedores.length > 0 && vendedoresAtribuidos.length > 0) {
       calcularMetricas(vendedores);
     }
   }, [atendimentos, vendedores, vendedoresAtribuidos]);
