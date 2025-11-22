@@ -9,27 +9,29 @@ export function AppHeader() {
 
   return (
     <>
-      {/* Faixa informativa laranja - estilo Altese */}
-      <div className="w-full bg-accent px-4 py-2 text-center">
-        <p className="text-sm font-medium text-accent-foreground">
-          ⚡ Sistema híbrido IA + Vendedores para atendimento 24/7
+      {/* Faixa informativa com gradiente laranja-vermelho */}
+      <div className="w-full bg-gradient-to-r from-accent via-accent to-destructive/80 px-4 py-2.5 text-center shadow-md">
+        <p className="text-sm font-semibold text-white flex items-center justify-center gap-2">
+          <span className="animate-pulse">⚡</span>
+          Sistema híbrido IA + Vendedores para atendimento 24/7
+          <span className="animate-pulse">⚡</span>
         </p>
       </div>
 
-      <header className="sticky top-0 z-50 w-full border-b border-border bg-primary">
+      <header className="sticky top-0 z-50 w-full border-b-2 border-secondary/30 bg-gradient-to-r from-primary via-primary to-secondary shadow-lg">
         <div className="flex h-16 items-center gap-4 px-6">
-          <SidebarTrigger className="text-primary-foreground hover:bg-primary/90" />
+          <SidebarTrigger className="text-primary-foreground hover:bg-white/20 transition-colors" />
           
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-foreground">
-                <span className="text-2xl font-bold text-primary">A</span>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-white to-accent shadow-md">
+                <span className="text-2xl font-bold bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent">A</span>
               </div>
-              <span className="text-xl font-bold text-primary-foreground">
+              <span className="text-xl font-bold text-white drop-shadow-md">
                 ALTESE
               </span>
             </div>
-            <span className="hidden md:inline text-sm font-medium text-primary-foreground/80">
+            <span className="hidden md:inline text-sm font-medium text-white/90">
               AI Sales Sync
             </span>
           </div>
@@ -39,16 +41,16 @@ export function AppHeader() {
               variant="ghost"
               size="icon"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="text-primary-foreground hover:bg-primary/90"
+              className="text-white hover:bg-white/20"
             >
               <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
               <span className="sr-only">Alternar tema</span>
             </Button>
 
-            <Avatar className="h-9 w-9">
+            <Avatar className="h-9 w-9 border-2 border-white/30">
               <AvatarImage src="" alt="User" />
-              <AvatarFallback className="bg-accent text-accent-foreground">
+              <AvatarFallback className="bg-gradient-to-br from-accent to-accent/80 text-white font-bold">
                 U
               </AvatarFallback>
             </Avatar>
