@@ -3,10 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, Clock, CheckCircle2, RefreshCw, Shield, Package, ChevronDown, User } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { FileText, Clock, CheckCircle2, RefreshCw, Shield, Package, ChevronDown, User, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { AtendimentoChatModal } from "@/components/supervisor/AtendimentoChatModal";
 
 type Atendimento = {
   id: string;
@@ -17,6 +20,7 @@ type Atendimento = {
   placa?: string;
   chassi?: string;
   resumo_necessidade?: string;
+  created_at?: string;
   clientes: {
     nome: string;
     telefone: string;
@@ -39,11 +43,21 @@ type VendedorListas = {
   resolvidos: Atendimento[];
 };
 
+type SortOption = 'date' | 'status';
+
 export default function Orcamentos() {
   const [vendedores, setVendedores] = useState<VendedorListas[]>([]);
   const [loading, setLoading] = useState(true);
   const [openVendedores, setOpenVendedores] = useState<Set<string>>(new Set());
   const [openListas, setOpenListas] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<SortOption>('date');
+  const [selectedAtendimento, setSelectedAtendimento] = useState<{
+    id: string;
+    clienteNome: string;
+    veiculoInfo: string;
+    status: string;
+  } | null>(null);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -150,6 +164,32 @@ export default function Orcamentos() {
     });
   };
 
+  const sortAtendimentos = (items: Atendimento[]) => {
+    const sorted = [...items];
+    
+    if (sortBy === 'date') {
+      sorted.sort((a, b) => {
+        const dateA = a.mensagens?.[0]?.created_at || a.created_at || '';
+        const dateB = b.mensagens?.[0]?.created_at || b.created_at || '';
+        return new Date(dateB).getTime() - new Date(dateA).getTime();
+      });
+    } else if (sortBy === 'status') {
+      sorted.sort((a, b) => a.status.localeCompare(b.status));
+    }
+    
+    return sorted;
+  };
+
+  const handleOpenChat = (atendimento: Atendimento) => {
+    setSelectedAtendimento({
+      id: atendimento.id,
+      clienteNome: atendimento.clientes?.nome || 'Cliente',
+      veiculoInfo: `${atendimento.marca_veiculo} ${atendimento.modelo_veiculo || ''}`.trim(),
+      status: atendimento.status,
+    });
+    setChatModalOpen(true);
+  };
+
   const ListaSection = ({ 
     title, 
     icon: Icon, 
@@ -167,6 +207,7 @@ export default function Orcamentos() {
   }) => {
     const listaId = `${vendedorId}-${listaKey}`;
     const isOpen = openListas.has(listaId);
+    const sortedItems = sortAtendimentos(items);
 
     return (
       <Collapsible open={isOpen} onOpenChange={() => toggleLista(listaId)}>
@@ -195,7 +236,7 @@ export default function Orcamentos() {
               <CardContent>
                 <ScrollArea className="h-[400px]">
                   <div className="space-y-3">
-                    {items.map((item) => (
+                    {sortedItems.map((item) => (
                       <Card key={item.id} className="p-4 bg-background border border-border hover:border-primary/50 transition-colors">
                         <div className="space-y-2">
                           <div className="flex items-start justify-between">
@@ -205,9 +246,11 @@ export default function Orcamentos() {
                                 {item.clientes?.telefone}
                               </p>
                             </div>
-                            <Badge variant="outline" className={`text-${color} border-${color}`}>
-                              {item.status.replace(/_/g, ' ')}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className={`text-${color} border-${color}`}>
+                                {item.status.replace(/_/g, ' ')}
+                              </Badge>
+                            </div>
                           </div>
                           
                           <div className="pt-2 border-t border-border/50">
@@ -242,6 +285,18 @@ export default function Orcamentos() {
                               </p>
                             </div>
                           )}
+
+                          <div className="pt-2 border-t border-border/50">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenChat(item)}
+                              className="w-full"
+                            >
+                              <MessageSquare className="h-4 w-4 mr-2" />
+                              Ver Chat Completo
+                            </Button>
+                          </div>
                         </div>
                       </Card>
                     ))}
@@ -258,11 +313,25 @@ export default function Orcamentos() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Listas</h1>
-          <p className="text-muted-foreground mt-2">
-            Gerencie as listas de atendimentos de cada vendedor
-          </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Listas</h1>
+            <p className="text-muted-foreground mt-2">
+              Gerencie as listas de atendimentos de cada vendedor
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Ordenar por:</span>
+            <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">Data (Mais Recente)</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {loading ? (
@@ -385,6 +454,17 @@ export default function Orcamentos() {
           </div>
         )}
       </div>
+
+      {selectedAtendimento && (
+        <AtendimentoChatModal
+          atendimentoId={selectedAtendimento.id}
+          clienteNome={selectedAtendimento.clienteNome}
+          veiculoInfo={selectedAtendimento.veiculoInfo}
+          status={selectedAtendimento.status}
+          open={chatModalOpen}
+          onOpenChange={setChatModalOpen}
+        />
+      )}
     </MainLayout>
   );
 }
