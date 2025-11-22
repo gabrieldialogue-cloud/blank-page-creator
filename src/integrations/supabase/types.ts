@@ -14,6 +14,227 @@ export type Database = {
   }
   public: {
     Tables: {
+      atendimentos: {
+        Row: {
+          ano_veiculo: string | null
+          chassi: string | null
+          cliente_id: string | null
+          created_at: string | null
+          fotos_urls: string[] | null
+          id: string
+          marca_veiculo: string
+          modelo_veiculo: string | null
+          placa: string | null
+          resumo_necessidade: string | null
+          status: Database["public"]["Enums"]["atendimento_status"] | null
+          updated_at: string | null
+          vendedor_fixo_id: string | null
+        }
+        Insert: {
+          ano_veiculo?: string | null
+          chassi?: string | null
+          cliente_id?: string | null
+          created_at?: string | null
+          fotos_urls?: string[] | null
+          id?: string
+          marca_veiculo: string
+          modelo_veiculo?: string | null
+          placa?: string | null
+          resumo_necessidade?: string | null
+          status?: Database["public"]["Enums"]["atendimento_status"] | null
+          updated_at?: string | null
+          vendedor_fixo_id?: string | null
+        }
+        Update: {
+          ano_veiculo?: string | null
+          chassi?: string | null
+          cliente_id?: string | null
+          created_at?: string | null
+          fotos_urls?: string[] | null
+          id?: string
+          marca_veiculo?: string
+          modelo_veiculo?: string | null
+          placa?: string | null
+          resumo_necessidade?: string | null
+          status?: Database["public"]["Enums"]["atendimento_status"] | null
+          updated_at?: string | null
+          vendedor_fixo_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atendimentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atendimentos_vendedor_fixo_id_fkey"
+            columns: ["vendedor_fixo_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clientes: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          nome: string
+          telefone: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          nome: string
+          telefone: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          nome?: string
+          telefone?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      config_vendedores: {
+        Row: {
+          created_at: string | null
+          especialidade_marca: string
+          id: string
+          prioridade: Database["public"]["Enums"]["prioridade_vendedor"]
+          status_online: boolean | null
+          ultimo_atendimento_at: string | null
+          updated_at: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          especialidade_marca: string
+          id?: string
+          prioridade?: Database["public"]["Enums"]["prioridade_vendedor"]
+          status_online?: boolean | null
+          ultimo_atendimento_at?: string | null
+          updated_at?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          especialidade_marca?: string
+          id?: string
+          prioridade?: Database["public"]["Enums"]["prioridade_vendedor"]
+          status_online?: boolean | null
+          ultimo_atendimento_at?: string | null
+          updated_at?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "config_vendedores_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      intervencoes: {
+        Row: {
+          atendimento_id: string | null
+          created_at: string | null
+          descricao: string | null
+          id: string
+          resolvida: boolean | null
+          tipo: Database["public"]["Enums"]["intervencao_tipo"]
+          updated_at: string | null
+          vendedor_id: string | null
+        }
+        Insert: {
+          atendimento_id?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          resolvida?: boolean | null
+          tipo: Database["public"]["Enums"]["intervencao_tipo"]
+          updated_at?: string | null
+          vendedor_id?: string | null
+        }
+        Update: {
+          atendimento_id?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          resolvida?: boolean | null
+          tipo?: Database["public"]["Enums"]["intervencao_tipo"]
+          updated_at?: string | null
+          vendedor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intervencoes_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intervencoes_vendedor_id_fkey"
+            columns: ["vendedor_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mensagens: {
+        Row: {
+          atendimento_id: string | null
+          conteudo: string
+          created_at: string | null
+          id: string
+          remetente_id: string | null
+          remetente_tipo: string
+        }
+        Insert: {
+          atendimento_id?: string | null
+          conteudo: string
+          created_at?: string | null
+          id?: string
+          remetente_id?: string | null
+          remetente_tipo: string
+        }
+        Update: {
+          atendimento_id?: string | null
+          conteudo?: string
+          created_at?: string | null
+          id?: string
+          remetente_id?: string | null
+          remetente_tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mensagens_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensagens_remetente_id_fkey"
+            columns: ["remetente_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           clinic_name: string | null
@@ -44,6 +265,87 @@ export type Database = {
         }
         Relationships: []
       }
+      status_atendimento: {
+        Row: {
+          alterado_por_id: string | null
+          atendimento_id: string | null
+          created_at: string | null
+          id: string
+          status_anterior:
+            | Database["public"]["Enums"]["atendimento_status"]
+            | null
+          status_novo: Database["public"]["Enums"]["atendimento_status"]
+        }
+        Insert: {
+          alterado_por_id?: string | null
+          atendimento_id?: string | null
+          created_at?: string | null
+          id?: string
+          status_anterior?:
+            | Database["public"]["Enums"]["atendimento_status"]
+            | null
+          status_novo: Database["public"]["Enums"]["atendimento_status"]
+        }
+        Update: {
+          alterado_por_id?: string | null
+          atendimento_id?: string | null
+          created_at?: string | null
+          id?: string
+          status_anterior?:
+            | Database["public"]["Enums"]["atendimento_status"]
+            | null
+          status_novo?: Database["public"]["Enums"]["atendimento_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "status_atendimento_alterado_por_id_fkey"
+            columns: ["alterado_por_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "status_atendimento_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      usuarios: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string
+          id: string
+          nome: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email: string
+          id?: string
+          nome: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          nome?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -52,7 +354,22 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      atendimento_status:
+        | "ia_respondendo"
+        | "aguardando_cliente"
+        | "vendedor_intervindo"
+        | "aguardando_orcamento"
+        | "aguardando_fechamento"
+        | "encerrado"
+      intervencao_tipo:
+        | "orcamento"
+        | "ajuda_humana"
+        | "fechamento_pedido"
+        | "garantia"
+        | "reembolso"
+        | "troca"
+      prioridade_vendedor: "1" | "2" | "3"
+      user_role: "vendedor" | "supervisor" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -179,6 +496,25 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      atendimento_status: [
+        "ia_respondendo",
+        "aguardando_cliente",
+        "vendedor_intervindo",
+        "aguardando_orcamento",
+        "aguardando_fechamento",
+        "encerrado",
+      ],
+      intervencao_tipo: [
+        "orcamento",
+        "ajuda_humana",
+        "fechamento_pedido",
+        "garantia",
+        "reembolso",
+        "troca",
+      ],
+      prioridade_vendedor: ["1", "2", "3"],
+      user_role: ["vendedor", "supervisor", "admin"],
+    },
   },
 } as const
