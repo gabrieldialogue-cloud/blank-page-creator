@@ -8,8 +8,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 type DetailType = 
   | "ia_respondendo" 
-  | "aguardando_cliente" 
-  | "intervencao" 
   | "orcamentos" 
   | "fechamento"
   | "pessoal_ativas"
@@ -17,21 +15,28 @@ type DetailType =
   | "pessoal_aguardando"
   | "reembolso"
   | "garantia"
-  | "troca";
+  | "troca"
+  | "resolvidos";
 
 export default function Atendimentos() {
-  const [expandedDetail, setExpandedDetail] = useState<DetailType | null>(null);
+  const [expandedDetails, setExpandedDetails] = useState<Set<DetailType>>(new Set());
 
   const toggleDetail = (type: DetailType) => {
-    setExpandedDetail(expandedDetail === type ? null : type);
+    setExpandedDetails(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(type)) {
+        newSet.delete(type);
+      } else {
+        newSet.add(type);
+      }
+      return newSet;
+    });
   };
 
   const getDetailTitle = (type: DetailType | null) => {
     if (!type) return "";
     const titles: Record<DetailType, string> = {
       ia_respondendo: "IA Respondendo",
-      aguardando_cliente: "Aguardando Cliente",
-      intervencao: "Intervenções Ativas",
       orcamentos: "Orçamentos Pendentes",
       fechamento: "Aguardando Fechamento",
       pessoal_ativas: "Conversas Ativas - Número Pessoal",
@@ -39,7 +44,8 @@ export default function Atendimentos() {
       pessoal_aguardando: "Aguardando Resposta",
       reembolso: "Solicitações de Reembolso",
       garantia: "Solicitações de Garantia",
-      troca: "Solicitações de Troca"
+      troca: "Solicitações de Troca",
+      resolvidos: "Casos Resolvidos"
     };
     return titles[type];
   };
@@ -48,8 +54,6 @@ export default function Atendimentos() {
     if (!type) return "";
     const descriptions: Record<DetailType, string> = {
       ia_respondendo: "Visualize as conversas sendo atendidas automaticamente pela IA",
-      aguardando_cliente: "Conversas onde a IA está aguardando resposta do cliente",
-      intervencao: "Casos que requerem ação imediata do vendedor",
       orcamentos: "Lista de orçamentos solicitados pelos clientes aguardando envio",
       fechamento: "Negociações em fase final aguardando confirmação",
       pessoal_ativas: "Conversas diretas com clientes no seu número pessoal",
@@ -57,7 +61,8 @@ export default function Atendimentos() {
       pessoal_aguardando: "Clientes aguardando sua resposta no número pessoal",
       reembolso: "Solicitações de devolução de valores dos clientes",
       garantia: "Acionamentos de garantia de produtos",
-      troca: "Solicitações de troca de produtos"
+      troca: "Solicitações de troca de produtos",
+      resolvidos: "Casos especiais que foram resolvidos com sucesso"
     };
     return descriptions[type];
   };
@@ -130,7 +135,7 @@ export default function Atendimentos() {
 
             {/* Seção de Prioridade 1 - Orçamentos e Fechamento */}
             <div className="grid gap-4 md:grid-cols-2">
-              <Collapsible open={expandedDetail === "orcamentos"} onOpenChange={() => toggleDetail("orcamentos")}>
+              <Collapsible open={expandedDetails.has("orcamentos")} onOpenChange={() => toggleDetail("orcamentos")}>
                 <Card className="rounded-2xl border-accent bg-gradient-to-br from-accent/10 to-transparent shadow-lg hover:shadow-xl transition-shadow">
                   <CollapsibleTrigger className="w-full text-left">
                     <CardHeader className="pb-4">
@@ -143,7 +148,7 @@ export default function Atendimentos() {
                           <Badge variant="outline" className="bg-accent/10 text-accent border-accent/30 text-lg font-bold px-3">
                             0
                           </Badge>
-                          {expandedDetail === "orcamentos" ? (
+                          {expandedDetails.has("orcamentos") ? (
                             <ChevronUp className="h-5 w-5 text-accent" />
                           ) : (
                             <ChevronDown className="h-5 w-5 text-accent" />
@@ -166,7 +171,7 @@ export default function Atendimentos() {
                 </Card>
               </Collapsible>
 
-              <Collapsible open={expandedDetail === "fechamento"} onOpenChange={() => toggleDetail("fechamento")}>
+              <Collapsible open={expandedDetails.has("fechamento")} onOpenChange={() => toggleDetail("fechamento")}>
                 <Card className="rounded-2xl border-success bg-gradient-to-br from-success/10 to-transparent shadow-lg hover:shadow-xl transition-shadow">
                   <CollapsibleTrigger className="w-full text-left">
                     <CardHeader className="pb-4">
@@ -179,7 +184,7 @@ export default function Atendimentos() {
                           <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-lg font-bold px-3">
                             0
                           </Badge>
-                          {expandedDetail === "fechamento" ? (
+                          {expandedDetails.has("fechamento") ? (
                             <ChevronUp className="h-5 w-5 text-success" />
                           ) : (
                             <ChevronDown className="h-5 w-5 text-success" />
@@ -203,73 +208,6 @@ export default function Atendimentos() {
               </Collapsible>
             </div>
 
-            {/* Métricas Secundárias */}
-            <div className="grid gap-4 md:grid-cols-3">
-              <Collapsible open={expandedDetail === "aguardando_cliente"} onOpenChange={() => toggleDetail("aguardando_cliente")}>
-                <Card className="rounded-2xl border-border bg-gradient-to-br from-muted/30 to-transparent shadow-md hover:shadow-lg transition-shadow">
-                  <CollapsibleTrigger className="w-full text-left">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2 text-sm">
-                          <MessageSquare className="h-4 w-4" />
-                          Aguardando Cliente
-                        </CardTitle>
-                        {expandedDetail === "aguardando_cliente" ? (
-                          <ChevronUp className="h-4 w-4" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4" />
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-3xl font-bold">0</p>
-                    </CardContent>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <CardContent className="pt-2">
-                      <div className="rounded-lg border bg-muted/30 p-4 text-center">
-                        <p className="text-xs text-muted-foreground">
-                          Nenhum cliente aguardando resposta
-                        </p>
-                      </div>
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
-
-              <Collapsible open={expandedDetail === "intervencao"} onOpenChange={() => toggleDetail("intervencao")}>
-                <Card className="rounded-2xl border-orange-500/50 bg-gradient-to-br from-orange-500/10 to-transparent shadow-md hover:shadow-lg transition-shadow">
-                  <CollapsibleTrigger className="w-full text-left">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2 text-sm text-orange-600 dark:text-orange-400">
-                          <User className="h-4 w-4" />
-                          Intervenções Ativas
-                        </CardTitle>
-                        {expandedDetail === "intervencao" ? (
-                          <ChevronUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">0</p>
-                    </CardContent>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <CardContent className="pt-2">
-                      <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-4 text-center">
-                        <p className="text-xs text-muted-foreground">
-                          Nenhuma intervenção necessária no momento
-                        </p>
-                      </div>
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
-            </div>
-
             {/* Seção de Solicitações Especiais */}
             <Card className="rounded-2xl border-border bg-card shadow-md">
               <CardHeader>
@@ -280,8 +218,8 @@ export default function Atendimentos() {
                 <CardDescription>Casos que requerem atenção diferenciada</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <Collapsible open={expandedDetail === "reembolso"} onOpenChange={() => toggleDetail("reembolso")}>
+                <div className="grid gap-3 md:grid-cols-4">
+                  <Collapsible open={expandedDetails.has("reembolso")} onOpenChange={() => toggleDetail("reembolso")}>
                     <Card className="border-red-500/50 bg-gradient-to-br from-red-500/5 to-transparent hover:shadow-md transition-shadow">
                       <CollapsibleTrigger className="w-full text-left">
                         <CardHeader className="pb-2">
@@ -290,7 +228,7 @@ export default function Atendimentos() {
                               <RefreshCw className="h-4 w-4" />
                               Reembolsos
                             </CardTitle>
-                            {expandedDetail === "reembolso" ? (
+                            {expandedDetails.has("reembolso") ? (
                               <ChevronUp className="h-4 w-4 text-red-600 dark:text-red-400" />
                             ) : (
                               <ChevronDown className="h-4 w-4 text-red-600 dark:text-red-400" />
@@ -311,7 +249,7 @@ export default function Atendimentos() {
                     </Card>
                   </Collapsible>
 
-                  <Collapsible open={expandedDetail === "garantia"} onOpenChange={() => toggleDetail("garantia")}>
+                  <Collapsible open={expandedDetails.has("garantia")} onOpenChange={() => toggleDetail("garantia")}>
                     <Card className="border-blue-500/50 bg-gradient-to-br from-blue-500/5 to-transparent hover:shadow-md transition-shadow">
                       <CollapsibleTrigger className="w-full text-left">
                         <CardHeader className="pb-2">
@@ -320,7 +258,7 @@ export default function Atendimentos() {
                               <Shield className="h-4 w-4" />
                               Garantias
                             </CardTitle>
-                            {expandedDetail === "garantia" ? (
+                            {expandedDetails.has("garantia") ? (
                               <ChevronUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                             ) : (
                               <ChevronDown className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -341,7 +279,7 @@ export default function Atendimentos() {
                     </Card>
                   </Collapsible>
 
-                  <Collapsible open={expandedDetail === "troca"} onOpenChange={() => toggleDetail("troca")}>
+                  <Collapsible open={expandedDetails.has("troca")} onOpenChange={() => toggleDetail("troca")}>
                     <Card className="border-purple-500/50 bg-gradient-to-br from-purple-500/5 to-transparent hover:shadow-md transition-shadow">
                       <CollapsibleTrigger className="w-full text-left">
                         <CardHeader className="pb-2">
@@ -350,7 +288,7 @@ export default function Atendimentos() {
                               <Package className="h-4 w-4" />
                               Trocas
                             </CardTitle>
-                            {expandedDetail === "troca" ? (
+                            {expandedDetails.has("troca") ? (
                               <ChevronUp className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                             ) : (
                               <ChevronDown className="h-4 w-4 text-purple-600 dark:text-purple-400" />
@@ -370,6 +308,36 @@ export default function Atendimentos() {
                       </CollapsibleContent>
                     </Card>
                   </Collapsible>
+
+                  <Collapsible open={expandedDetails.has("resolvidos")} onOpenChange={() => toggleDetail("resolvidos")}>
+                    <Card className="border-green-500/50 bg-gradient-to-br from-green-500/5 to-transparent hover:shadow-md transition-shadow">
+                      <CollapsibleTrigger className="w-full text-left">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="flex items-center gap-2 text-base text-green-600 dark:text-green-400">
+                              <CheckCircle2 className="h-4 w-4" />
+                              Resolvidos
+                            </CardTitle>
+                            {expandedDetails.has("resolvidos") ? (
+                              <ChevronUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-green-600 dark:text-green-400" />
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-2xl font-bold text-green-600 dark:text-green-400">0</p>
+                        </CardContent>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <CardContent className="pt-2">
+                          <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-3 text-center">
+                            <p className="text-xs text-muted-foreground">Nenhum caso resolvido</p>
+                          </div>
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
                 </div>
               </CardContent>
             </Card>
@@ -379,7 +347,7 @@ export default function Atendimentos() {
           <TabsContent value="pessoal" className="space-y-6">
             {/* Métricas Principais - Número Pessoal */}
             <div className="grid gap-4 md:grid-cols-3">
-              <Collapsible open={expandedDetail === "pessoal_ativas"} onOpenChange={() => toggleDetail("pessoal_ativas")}>
+              <Collapsible open={expandedDetails.has("pessoal_ativas")} onOpenChange={() => toggleDetail("pessoal_ativas")}>
                 <Card className="rounded-2xl border-accent bg-gradient-to-br from-accent/10 to-transparent shadow-md hover:shadow-lg transition-shadow">
                   <CollapsibleTrigger className="w-full text-left">
                     <CardHeader className="pb-3">
@@ -391,7 +359,7 @@ export default function Atendimentos() {
                           </CardTitle>
                           <CardDescription className="text-xs">Atendimentos diretos</CardDescription>
                         </div>
-                        {expandedDetail === "pessoal_ativas" ? (
+                        {expandedDetails.has("pessoal_ativas") ? (
                           <ChevronUp className="h-4 w-4 text-accent" />
                         ) : (
                           <ChevronDown className="h-4 w-4 text-accent" />
@@ -414,7 +382,7 @@ export default function Atendimentos() {
                 </Card>
               </Collapsible>
 
-              <Collapsible open={expandedDetail === "pessoal_respondidas"} onOpenChange={() => toggleDetail("pessoal_respondidas")}>
+              <Collapsible open={expandedDetails.has("pessoal_respondidas")} onOpenChange={() => toggleDetail("pessoal_respondidas")}>
                 <Card className="rounded-2xl border-success bg-gradient-to-br from-success/10 to-transparent shadow-md hover:shadow-lg transition-shadow">
                   <CollapsibleTrigger className="w-full text-left">
                     <CardHeader className="pb-3">
@@ -426,7 +394,7 @@ export default function Atendimentos() {
                           </CardTitle>
                           <CardDescription className="text-xs">Já atendidas</CardDescription>
                         </div>
-                        {expandedDetail === "pessoal_respondidas" ? (
+                        {expandedDetails.has("pessoal_respondidas") ? (
                           <ChevronUp className="h-4 w-4 text-success" />
                         ) : (
                           <ChevronDown className="h-4 w-4 text-success" />
@@ -449,7 +417,7 @@ export default function Atendimentos() {
                 </Card>
               </Collapsible>
 
-              <Collapsible open={expandedDetail === "pessoal_aguardando"} onOpenChange={() => toggleDetail("pessoal_aguardando")}>
+              <Collapsible open={expandedDetails.has("pessoal_aguardando")} onOpenChange={() => toggleDetail("pessoal_aguardando")}>
                 <Card className="rounded-2xl border-border bg-gradient-to-br from-muted/20 to-transparent shadow-md hover:shadow-lg transition-shadow">
                   <CollapsibleTrigger className="w-full text-left">
                     <CardHeader className="pb-3">
@@ -461,7 +429,7 @@ export default function Atendimentos() {
                           </CardTitle>
                           <CardDescription className="text-xs">Esperando resposta</CardDescription>
                         </div>
-                        {expandedDetail === "pessoal_aguardando" ? (
+                        {expandedDetails.has("pessoal_aguardando") ? (
                           <ChevronUp className="h-4 w-4" />
                         ) : (
                           <ChevronDown className="h-4 w-4" />
