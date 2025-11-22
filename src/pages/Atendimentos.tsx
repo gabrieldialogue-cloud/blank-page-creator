@@ -65,6 +65,7 @@ export default function Atendimentos() {
   const [scrollActiveChat, setScrollActiveChat] = useState(false);
   const [messageLimit, setMessageLimit] = useState(10);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -578,6 +579,25 @@ export default function Atendimentos() {
     isTypingVendedor && !isSupervisor, 
     'vendedor'
   );
+
+  // Check scroll position to show/hide scroll to bottom button
+  const checkScrollPosition = () => {
+    if (!scrollRef.current) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+    setShowScrollButton(!isNearBottom);
+  };
+
+  // Scroll to bottom function
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   // Auto scroll when messages change
   useEffect(() => {
@@ -1536,11 +1556,12 @@ export default function Atendimentos() {
                                 <div 
                                   onClick={() => setScrollActiveChat(true)}
                                   onMouseLeave={() => setScrollActiveChat(false)}
-                                  className={scrollActiveChat ? '' : 'overflow-hidden'}
+                                  className={`${scrollActiveChat ? '' : 'overflow-hidden'} relative`}
                                 >
                                   <ScrollArea 
                                     className="h-[700px] p-4 rounded-b-xl"
                                     ref={scrollRef}
+                                    onScrollCapture={checkScrollPosition}
                                   >
                                     <div
                                       className="h-full w-full rounded-xl border border-primary/10 bg-muted/40"
@@ -1619,6 +1640,18 @@ export default function Atendimentos() {
                                         )}
                                       </div>
                                     </div>
+                                    
+                                    {/* Scroll to Bottom Button */}
+                                    {showScrollButton && selectedAtendimentoIdVendedor && (
+                                      <Button
+                                        onClick={scrollToBottom}
+                                        size="icon"
+                                        className="fixed bottom-32 right-8 rounded-full shadow-lg z-50 animate-fade-in"
+                                        variant="default"
+                                      >
+                                        <ChevronDown className="h-5 w-5" />
+                                      </Button>
+                                    )}
                                   </ScrollArea>
                                 </div>
                                 
