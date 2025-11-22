@@ -116,7 +116,7 @@ export function ChatMessage({
   return (
     <>
       <div className={cn(
-        "flex gap-2 sm:gap-3",
+        "flex gap-2 sm:gap-3 animate-fade-in",
         showSenderName ? "mb-3 sm:mb-4" : "mb-1.5 sm:mb-2",
         config.align === "right" && "flex-row-reverse",
         isHighlighted && "bg-yellow-100 dark:bg-yellow-900/20 p-2 rounded-lg -mx-2"
