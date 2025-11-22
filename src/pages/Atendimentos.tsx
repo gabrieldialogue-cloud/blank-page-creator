@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { format, differenceInHours } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { VendedorChatModal } from "@/components/supervisor/VendedorChatModal";
+import { HistoricoAtendimentos } from "@/components/supervisor/HistoricoAtendimentos";
 
 type DetailType = 
   | "ia_respondendo" 
@@ -271,7 +272,7 @@ export default function Atendimentos() {
         {isSupervisor ? (
           // View for Supervisors
           <Tabs defaultValue="vendedores" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 lg:w-[500px]">
+            <TabsList className="grid w-full grid-cols-3 lg:w-[700px]">
               <TabsTrigger value="vendedores" className="gap-2">
                 <User className="h-4 w-4" />
                 Vendedores ({vendedores.length})
@@ -279,6 +280,10 @@ export default function Atendimentos() {
               <TabsTrigger value="nao-atribuidos" className="gap-2">
                 <AlertCircle className="h-4 w-4" />
                 Não Atribuídos ({atendimentosNaoAtribuidos.length})
+              </TabsTrigger>
+              <TabsTrigger value="historico" className="gap-2">
+                <Clock className="h-4 w-4" />
+                Histórico
               </TabsTrigger>
             </TabsList>
 
@@ -469,6 +474,11 @@ export default function Atendimentos() {
                   />
                 ))
               )}
+            </TabsContent>
+
+            {/* Histórico Tab */}
+            <TabsContent value="historico" className="space-y-4">
+              <HistoricoAtendimentos vendedoresAtribuidos={vendedoresAtribuidos} />
             </TabsContent>
           </Tabs>
         ) : (
