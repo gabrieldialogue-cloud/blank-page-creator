@@ -1,12 +1,109 @@
+import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Phone, Mail, Car, FileText, AlertCircle, Calendar, MessageSquare } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Search, Phone, Mail, Car, MessageSquare, Calendar, User } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+interface Cliente {
+  id: string;
+  nome: string;
+  telefone: string;
+  email: string | null;
+  created_at: string;
+  atendimentos: Array<{
+    id: string;
+    marca_veiculo: string;
+    modelo_veiculo: string | null;
+    status: string;
+    created_at: string;
+  }>;
+}
 
 export default function Contatos() {
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchClientes();
+  }, []);
+
+  const fetchClientes = async () => {
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from("clientes")
+      .select(`
+        *,
+        atendimentos (
+          id,
+          marca_veiculo,
+          modelo_veiculo,
+          status,
+          created_at
+        )
+      `)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching clientes:", error);
+    } else {
+      setClientes(data || []);
+    }
+    setIsLoading(false);
+  };
+
+  const filteredClientes = clientes.filter((cliente) => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      cliente.nome.toLowerCase().includes(searchLower) ||
+      cliente.telefone.includes(searchLower) ||
+      cliente.email?.toLowerCase().includes(searchLower) ||
+      cliente.atendimentos.some(
+        (a) =>
+          a.marca_veiculo?.toLowerCase().includes(searchLower) ||
+          a.modelo_veiculo?.toLowerCase().includes(searchLower)
+      )
+    );
+  });
+
+  const getInitials = (nome: string) => {
+    return nome
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      ia_respondendo: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+      aguardando_cliente: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+      vendedor_intervindo: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+      aguardando_orcamento: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+      aguardando_fechamento: "bg-green-500/10 text-green-500 border-green-500/20",
+      encerrado: "bg-gray-500/10 text-gray-500 border-gray-500/20",
+    };
+    return colors[status] || "bg-gray-500/10 text-gray-500";
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      ia_respondendo: "IA Respondendo",
+      aguardando_cliente: "Aguardando Cliente",
+      vendedor_intervindo: "Vendedor Intervindo",
+      aguardando_orcamento: "Aguardando Orçamento",
+      aguardando_fechamento: "Aguardando Fechamento",
+      encerrado: "Encerrado",
+    };
+    return labels[status] || status;
+  };
 
   return (
     <MainLayout>
@@ -19,6 +116,9 @@ export default function Contatos() {
               Todos os clientes e histórico completo de interações
             </p>
           </div>
+          <Badge variant="secondary" className="text-lg px-4 py-2">
+            {clientes.length} {clientes.length === 1 ? "cliente" : "clientes"}
+          </Badge>
         </div>
 
         {/* Search Bar */}
@@ -27,23 +127,116 @@ export default function Contatos() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome, telefone, placa, modelo..."
+                placeholder="Buscar por nome, telefone, email, marca ou modelo..."
                 className="pl-10 bg-background/50"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           </CardContent>
         </Card>
 
         {/* Contacts List */}
-        <div className="grid gap-4">
-          <Card className="border-dashed">
-            <CardContent className="pt-6 text-center">
-              <p className="text-muted-foreground">
-                Nenhum contato registrado ainda. Os contatos aparecerão aqui quando clientes iniciarem conversas.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        <ScrollArea className="h-[calc(100vh-280px)]">
+          <div className="grid gap-4">
+            {isLoading ? (
+              <Card>
+                <CardContent className="pt-6 text-center">
+                  <p className="text-muted-foreground">Carregando contatos...</p>
+                </CardContent>
+              </Card>
+            ) : filteredClientes.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="pt-6 text-center">
+                  <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground">
+                    {searchTerm
+                      ? "Nenhum contato encontrado com essa busca."
+                      : "Nenhum contato registrado ainda. Os contatos aparecerão aqui quando clientes iniciarem conversas."}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredClientes.map((cliente) => (
+                <Card key={cliente.id} className="hover:border-primary/50 transition-colors">
+                  <CardHeader>
+                    <div className="flex items-start gap-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          {getInitials(cliente.nome)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <CardTitle className="text-lg mb-1">{cliente.nome}</CardTitle>
+                        <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-3.5 w-3.5" />
+                            {cliente.telefone}
+                          </div>
+                          {cliente.email && (
+                            <div className="flex items-center gap-1">
+                              <Mail className="h-3.5 w-3.5" />
+                              {cliente.email}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            Cliente desde {format(new Date(cliente.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                          </div>
+                        </div>
+                      </div>
+                      <Badge variant="outline">
+                        <MessageSquare className="h-3 w-3 mr-1" />
+                        {cliente.atendimentos.length} atendimento{cliente.atendimentos.length !== 1 ? "s" : ""}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {cliente.atendimentos.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Histórico de Atendimentos:</p>
+                        <div className="space-y-2">
+                          {cliente.atendimentos.slice(0, 3).map((atendimento) => (
+                            <div
+                              key={atendimento.id}
+                              className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                            >
+                              <div className="flex items-center gap-3 flex-1">
+                                <Car className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                  <p className="text-sm font-medium">
+                                    {atendimento.marca_veiculo}
+                                    {atendimento.modelo_veiculo && ` ${atendimento.modelo_veiculo}`}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {format(new Date(atendimento.created_at), "dd/MM/yyyy 'às' HH:mm", {
+                                      locale: ptBR,
+                                    })}
+                                  </p>
+                                </div>
+                              </div>
+                              <Badge className={getStatusColor(atendimento.status)}>
+                                {getStatusLabel(atendimento.status)}
+                              </Badge>
+                            </div>
+                          ))}
+                          {cliente.atendimentos.length > 3 && (
+                            <p className="text-xs text-muted-foreground text-center pt-2">
+                              + {cliente.atendimentos.length - 3} atendimento
+                              {cliente.atendimentos.length - 3 !== 1 ? "s" : ""} anteriores
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Nenhum atendimento registrado ainda.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </ScrollArea>
       </div>
     </MainLayout>
   );
