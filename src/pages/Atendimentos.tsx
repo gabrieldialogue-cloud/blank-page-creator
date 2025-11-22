@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { compressImage, shouldCompress } from "@/lib/imageCompression";
 
 type DetailType = 
-  | "ia_respondendo" 
+  | "ia_respondendo"
   | "orcamentos" 
   | "fechamento"
   | "pessoal_ativas"
@@ -36,7 +36,7 @@ type DetailType =
   | "resolvidos";
 
 export default function Atendimentos() {
-  const [expandedDetails, setExpandedDetails] = useState<Set<DetailType>>(new Set());
+  const [expandedDetails, setExpandedDetails] = useState<Set<DetailType>>(new Set(["ia_respondendo"]));
   const { atendimentos, loading, getAtendimentosByStatus } = useAtendimentos();
   const [isSupervisor, setIsSupervisor] = useState(false);
   const [vendedoresAtribuidos, setVendedoresAtribuidos] = useState<string[]>([]);
@@ -919,258 +919,6 @@ export default function Atendimentos() {
 
           {/* Atendimentos IA */}
           <TabsContent value="ia" className="space-y-6">
-            {/* Destaque Principal - IA Respondendo (Chat ao Vivo) */}
-            <Card className="rounded-2xl border-primary bg-gradient-to-br from-primary/10 via-secondary/5 to-transparent shadow-xl">
-              <CardHeader className="border-b border-primary/20 bg-gradient-to-r from-primary/10 to-secondary/10">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-3 text-2xl">
-                      <Bot className="h-6 w-6 text-primary animate-pulse" />
-                      IA Respondendo - Chat ao Vivo
-                    </CardTitle>
-                    <CardDescription className="mt-2 text-base">
-                      Acompanhe em tempo real suas conversas com clientes
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 px-4 py-2 text-lg font-bold">
-                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : `${filteredAtendimentosVendedor.length} ativas`}
-                    </Badge>
-                    <Badge className="bg-gradient-to-r from-primary to-secondary text-white px-4 py-1">
-                      Chat ao Vivo
-                    </Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                {atendimentosVendedor.length === 0 ? (
-                  <div className="rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-12 text-center">
-                    <MessageSquare className="mx-auto h-16 w-16 text-primary/40 mb-4" />
-                    <p className="text-lg font-medium text-foreground mb-2">
-                      Nenhum atendimento ativo no momento
-                    </p>
-                    <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                      Quando novos clientes forem atribuídos a você, eles aparecerão aqui.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Lista de Atendimentos */}
-                    <Card className="lg:col-span-1">
-                      <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <MessageSquare className="h-5 w-5" />
-                          Conversas Ativas ({filteredAtendimentosVendedor.length})
-                        </CardTitle>
-                        <div className="mt-3">
-                          <Input
-                            type="text"
-                            placeholder="Buscar por nome ou telefone..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="h-9"
-                          />
-                        </div>
-                      </CardHeader>
-                      <CardContent className="p-0">
-                        <ScrollArea className="h-[500px]">
-                          {filteredAtendimentosVendedor.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full p-8 text-muted-foreground">
-                              <MessageSquare className="h-8 w-8 mb-2 opacity-50" />
-                              <p className="text-sm">Nenhum atendimento encontrado</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-1 p-4">
-                              {filteredAtendimentosVendedor.map((atendimento) => (
-                                <button
-                                  key={atendimento.id}
-                                  onClick={() => setSelectedAtendimentoIdVendedor(atendimento.id)}
-                                  className={`w-full text-left p-4 rounded-lg transition-all hover:bg-accent ${
-                                    selectedAtendimentoIdVendedor === atendimento.id ? 'bg-accent border-2 border-primary' : 'border border-border'
-                                  }`}
-                                >
-                                  <div className="flex items-start justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                      <User className="h-4 w-4 text-muted-foreground" />
-                                      <span className="font-semibold text-sm">
-                                        {atendimento.clientes?.nome || "Cliente"}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mb-2">
-                                    {atendimento.marca_veiculo} {atendimento.modelo_veiculo}
-                                  </p>
-                                  <div className="flex items-center justify-between">
-                                    {getStatusBadge(atendimento.status)}
-                                    <span className="text-xs text-muted-foreground">
-                                      {format(new Date(atendimento.created_at), "dd/MM HH:mm", { locale: ptBR })}
-                                    </span>
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </ScrollArea>
-                      </CardContent>
-                    </Card>
-
-                    {/* Chat Area */}
-                    <Card className="lg:col-span-2">
-                      <CardHeader className="border-b">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="text-base">
-                              {atendimentosVendedor.find(a => a.id === selectedAtendimentoIdVendedor)?.clientes?.nome || "Selecione um atendimento"}
-                            </CardTitle>
-                            {selectedAtendimentoIdVendedor && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {atendimentosVendedor.find(a => a.id === selectedAtendimentoIdVendedor)?.clientes?.telefone}
-                              </p>
-                            )}
-                          </div>
-                          {selectedAtendimentoIdVendedor && getStatusBadge(atendimentosVendedor.find(a => a.id === selectedAtendimentoIdVendedor)?.status || "")}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="p-0">
-                        <Tabs defaultValue="chat" className="w-full">
-                          <TabsList className="w-full justify-start rounded-none border-b bg-transparent px-4">
-                            <TabsTrigger value="chat" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">
-                              Chat
-                            </TabsTrigger>
-                            <TabsTrigger value="media" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">
-                              <Images className="h-4 w-4 mr-2" />
-                              Mídias
-                            </TabsTrigger>
-                          </TabsList>
-                          
-                          <TabsContent value="chat" className="mt-0">
-                            <ScrollArea className="h-[400px] p-4" ref={scrollRef}>
-                              {!selectedAtendimentoIdVendedor ? (
-                                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                                  <MessageSquare className="h-12 w-12 mb-4 opacity-50" />
-                                  <p>Selecione um atendimento para ver as mensagens</p>
-                                </div>
-                              ) : mensagensVendedor.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                                  <Bot className="h-12 w-12 mb-4 opacity-50" />
-                                  <p>Nenhuma mensagem ainda</p>
-                                </div>
-                              ) : (
-                                <div className="space-y-4">
-                                  {mensagensVendedor.map((mensagem) => (
-                                    <ChatMessage
-                                      key={mensagem.id}
-                                      remetenteTipo={mensagem.remetente_tipo}
-                                      conteudo={mensagem.conteudo}
-                                      createdAt={mensagem.created_at}
-                                      attachmentUrl={mensagem.attachment_url}
-                                      attachmentType={mensagem.attachment_type}
-                                    />
-                                  ))}
-                                  {isClientTyping && (
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground ml-11">
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                      <span>Cliente está digitando...</span>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </ScrollArea>
-                            
-                            {/* Input Area */}
-                            {selectedAtendimentoIdVendedor && (
-                              <div className="border-t p-4 bg-muted/30">
-                                {/* File Preview */}
-                                {selectedFile && (
-                                  <div className="mb-3 p-3 bg-accent/10 border border-accent/30 rounded-lg flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      {selectedFile.type.startsWith('image/') ? (
-                                        <ImageIcon className="h-5 w-5 text-accent" />
-                                      ) : (
-                                        <File className="h-5 w-5 text-accent" />
-                                      )}
-                                      <span className="text-sm font-medium truncate max-w-[200px]">
-                                        {selectedFile.name}
-                                      </span>
-                                      <span className="text-xs text-muted-foreground">
-                                        ({(selectedFile.size / 1024).toFixed(1)} KB)
-                                      </span>
-                                    </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6"
-                                      onClick={() => {
-                                        setSelectedFile(null);
-                                        if (fileInputRef.current) {
-                                          fileInputRef.current.value = "";
-                                        }
-                                      }}
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                )}
-                                
-                                <div className="flex gap-2">
-                                  <Input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.txt,.csv"
-                                    onChange={handleFileSelect}
-                                    className="hidden"
-                                  />
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="h-[60px] w-[60px] shrink-0"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={isUploading || isSending}
-                                  >
-                                    <Paperclip className="h-5 w-5" />
-                                  </Button>
-                                  <Textarea
-                                    value={messageInput}
-                                    onChange={handleInputChange}
-                                    onKeyPress={handleKeyPress}
-                                    placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
-                                    className="min-h-[60px] max-h-[120px] resize-none"
-                                    disabled={isSending || isUploading}
-                                  />
-                                  <Button
-                                    onClick={selectedFile ? handleSendWithFile : handleSendMessage}
-                                    disabled={(!messageInput.trim() && !selectedFile) || isSending || isUploading}
-                                    size="icon"
-                                    className="h-[60px] w-[60px] shrink-0"
-                                  >
-                                    {(isSending || isUploading) ? (
-                                      <Loader2 className="h-5 w-5 animate-spin" />
-                                    ) : (
-                                      <Send className="h-5 w-5" />
-                                    )}
-                                  </Button>
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-2">
-                                  {messageInput.length}/1000 caracteres
-                                  {selectedFile && " • Arquivo selecionado"}
-                                </p>
-                              </div>
-                            )}
-                          </TabsContent>
-                          
-                          <TabsContent value="media" className="mt-0">
-                            {selectedAtendimentoIdVendedor && (
-                              <MediaGallery mensagens={mensagensVendedor} />
-                            )}
-                          </TabsContent>
-                        </Tabs>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
             {/* Seção de Prioridade 1 - Orçamentos e Fechamento */}
             <div className="grid gap-4 md:grid-cols-2">
               <Collapsible open={expandedDetails.has("orcamentos")} onOpenChange={() => toggleDetail("orcamentos")}>
@@ -1284,7 +1032,272 @@ export default function Atendimentos() {
               </Collapsible>
             </div>
 
-            {/* Seção de Solicitações Especiais */}
+            {/* Destaque Principal - IA Respondendo (Chat ao Vivo) */}
+            <Collapsible open={expandedDetails.has("ia_respondendo")} onOpenChange={() => toggleDetail("ia_respondendo")} defaultOpen={true}>
+              <Card className="rounded-2xl border-primary bg-gradient-to-br from-primary/10 via-secondary/5 to-transparent shadow-xl">
+                <CollapsibleTrigger className="w-full text-left">
+                  <CardHeader className="border-b border-primary/20 bg-gradient-to-r from-primary/10 to-secondary/10">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-3 text-2xl">
+                          <Bot className="h-6 w-6 text-primary animate-pulse" />
+                          IA Respondendo - Chat ao Vivo
+                        </CardTitle>
+                        <CardDescription className="mt-2 text-base">
+                          {expandedDetails.has("ia_respondendo") 
+                            ? "Acompanhe em tempo real suas conversas com clientes" 
+                            : `${filteredAtendimentosVendedor.length} conversas ativas sendo gerenciadas pela IA`
+                          }
+                        </CardDescription>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 px-4 py-2 text-lg font-bold">
+                          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : `${filteredAtendimentosVendedor.length} ativas`}
+                        </Badge>
+                        <Badge className="bg-gradient-to-r from-primary to-secondary text-white px-4 py-1">
+                          Chat ao Vivo
+                        </Badge>
+                        {expandedDetails.has("ia_respondendo") ? (
+                          <ChevronUp className="h-5 w-5 text-primary" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5 text-primary" />
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="p-6">
+                    {atendimentosVendedor.length === 0 ? (
+                      <div className="rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-12 text-center">
+                        <MessageSquare className="mx-auto h-16 w-16 text-primary/40 mb-4" />
+                        <p className="text-lg font-medium text-foreground mb-2">
+                          Nenhum atendimento ativo no momento
+                        </p>
+                        <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                          Quando novos clientes forem atribuídos a você, eles aparecerão aqui.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Lista de Atendimentos */}
+                        <Card className="lg:col-span-1">
+                          <CardHeader>
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <MessageSquare className="h-5 w-5" />
+                              Conversas Ativas ({filteredAtendimentosVendedor.length})
+                            </CardTitle>
+                            <div className="mt-3">
+                              <Input
+                                type="text"
+                                placeholder="Buscar por nome ou telefone..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="h-9"
+                              />
+                            </div>
+                          </CardHeader>
+                          <CardContent className="p-0">
+                            <ScrollArea className="h-[500px]">
+                              {filteredAtendimentosVendedor.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full p-8 text-muted-foreground">
+                                  <MessageSquare className="h-8 w-8 mb-2 opacity-50" />
+                                  <p className="text-sm">Nenhum atendimento encontrado</p>
+                                </div>
+                              ) : (
+                                <div className="space-y-1 p-4">
+                                  {filteredAtendimentosVendedor.map((atendimento) => (
+                                    <button
+                                      key={atendimento.id}
+                                      onClick={() => setSelectedAtendimentoIdVendedor(atendimento.id)}
+                                      className={`w-full text-left p-4 rounded-lg transition-all hover:bg-accent ${
+                                        selectedAtendimentoIdVendedor === atendimento.id ? 'bg-accent border-2 border-primary' : 'border border-border'
+                                      }`}
+                                    >
+                                      <div className="flex items-start justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                          <User className="h-4 w-4 text-muted-foreground" />
+                                          <span className="font-semibold text-sm">
+                                            {atendimento.clientes?.nome || "Cliente"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground mb-2">
+                                        {atendimento.marca_veiculo} {atendimento.modelo_veiculo}
+                                      </p>
+                                      <div className="flex items-center justify-between">
+                                        {getStatusBadge(atendimento.status)}
+                                        <span className="text-xs text-muted-foreground">
+                                          {format(new Date(atendimento.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                                        </span>
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </ScrollArea>
+                          </CardContent>
+                        </Card>
+
+                        {/* Chat Area */}
+                        <Card className="lg:col-span-2">
+                          <CardHeader className="border-b">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <CardTitle className="text-base">
+                                  {atendimentosVendedor.find(a => a.id === selectedAtendimentoIdVendedor)?.clientes?.nome || "Selecione um atendimento"}
+                                </CardTitle>
+                                {selectedAtendimentoIdVendedor && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {atendimentosVendedor.find(a => a.id === selectedAtendimentoIdVendedor)?.clientes?.telefone}
+                                  </p>
+                                )}
+                              </div>
+                              {selectedAtendimentoIdVendedor && getStatusBadge(atendimentosVendedor.find(a => a.id === selectedAtendimentoIdVendedor)?.status || "")}
+                            </div>
+                          </CardHeader>
+                          <CardContent className="p-0">
+                            <Tabs defaultValue="chat" className="w-full">
+                              <TabsList className="w-full justify-start rounded-none border-b bg-transparent px-4">
+                                <TabsTrigger value="chat" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">
+                                  Chat
+                                </TabsTrigger>
+                                <TabsTrigger value="media" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">
+                                  <Images className="h-4 w-4 mr-2" />
+                                  Mídias
+                                </TabsTrigger>
+                              </TabsList>
+                              
+                              <TabsContent value="chat" className="mt-0">
+                                <ScrollArea className="h-[600px] p-4" ref={scrollRef}>
+                                  {!selectedAtendimentoIdVendedor ? (
+                                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                                      <MessageSquare className="h-12 w-12 mb-4 opacity-50" />
+                                      <p>Selecione um atendimento para ver as mensagens</p>
+                                    </div>
+                                  ) : mensagensVendedor.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                                      <Bot className="h-12 w-12 mb-4 opacity-50" />
+                                      <p>Nenhuma mensagem ainda</p>
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-4">
+                                      {mensagensVendedor.map((mensagem) => (
+                                        <ChatMessage
+                                          key={mensagem.id}
+                                          remetenteTipo={mensagem.remetente_tipo}
+                                          conteudo={mensagem.conteudo}
+                                          createdAt={mensagem.created_at}
+                                          attachmentUrl={mensagem.attachment_url}
+                                          attachmentType={mensagem.attachment_type}
+                                          attachmentFilename={mensagem.attachment_filename}
+                                        />
+                                      ))}
+                                      {isClientTyping && (
+                                        <div className="flex items-center gap-2 text-sm text-muted-foreground ml-11">
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                          <span>Cliente está digitando...</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </ScrollArea>
+                                
+                                {/* Input Area */}
+                                {selectedAtendimentoIdVendedor && (
+                                  <div className="border-t p-4 bg-muted/30">
+                                    {/* File Preview */}
+                                    {selectedFile && (
+                                      <div className="mb-3 p-3 bg-accent/10 border border-accent/30 rounded-lg flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          {selectedFile.type.startsWith('image/') ? (
+                                            <ImageIcon className="h-5 w-5 text-accent" />
+                                          ) : (
+                                            <File className="h-5 w-5 text-accent" />
+                                          )}
+                                          <span className="text-sm font-medium truncate max-w-[200px]">
+                                            {selectedFile.name}
+                                          </span>
+                                          <span className="text-xs text-muted-foreground">
+                                            ({(selectedFile.size / 1024).toFixed(1)} KB)
+                                          </span>
+                                        </div>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6"
+                                          onClick={() => {
+                                            setSelectedFile(null);
+                                            if (fileInputRef.current) {
+                                              fileInputRef.current.value = "";
+                                            }
+                                          }}
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    )}
+                                    
+                                    <div className="flex gap-2">
+                                      <Input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.txt,.csv"
+                                        onChange={handleFileSelect}
+                                        className="hidden"
+                                      />
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-[60px] w-[60px] shrink-0"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={isUploading || isSending}
+                                      >
+                                        <Paperclip className="h-5 w-5" />
+                                      </Button>
+                                      <Textarea
+                                        value={messageInput}
+                                        onChange={handleInputChange}
+                                        onKeyPress={handleKeyPress}
+                                        placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
+                                        className="min-h-[60px] max-h-[120px] resize-none"
+                                        disabled={isSending || isUploading}
+                                      />
+                                      <Button
+                                        onClick={selectedFile ? handleSendWithFile : handleSendMessage}
+                                        disabled={(!messageInput.trim() && !selectedFile) || isSending || isUploading}
+                                        size="icon"
+                                        className="h-[60px] w-[60px] shrink-0"
+                                      >
+                                        {(isSending || isUploading) ? (
+                                          <Loader2 className="h-5 w-5 animate-spin" />
+                                        ) : (
+                                          <Send className="h-5 w-5" />
+                                        )}
+                                      </Button>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                      {messageInput.length}/1000 caracteres
+                                      {selectedFile && " • Arquivo selecionado"}
+                                    </p>
+                                  </div>
+                                )}
+                              </TabsContent>
+                              
+                              <TabsContent value="media" className="mt-0">
+                                {selectedAtendimentoIdVendedor && (
+                                  <MediaGallery mensagens={mensagensVendedor} />
+                                )}
+                              </TabsContent>
+                            </Tabs>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
             <Card className="rounded-2xl border-border bg-card shadow-md">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
