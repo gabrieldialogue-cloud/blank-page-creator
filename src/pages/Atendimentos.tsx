@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
 import { format, differenceInHours } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { VendedorChatModal } from "@/components/supervisor/VendedorChatModal";
 
 type DetailType = 
   | "ia_respondendo" 
@@ -30,6 +31,9 @@ export default function Atendimentos() {
   const [isSupervisor, setIsSupervisor] = useState(false);
   const [vendedoresAtribuidos, setVendedoresAtribuidos] = useState<string[]>([]);
   const [metricas, setMetricas] = useState<any[]>([]);
+  const [vendedores, setVendedores] = useState<any[]>([]);
+  const [selectedVendedorId, setSelectedVendedorId] = useState<string | null>(null);
+  const [chatMensagens, setChatMensagens] = useState<any[]>([]);
 
   useEffect(() => {
     checkSupervisorRole();
@@ -69,6 +73,27 @@ export default function Atendimentos() {
 
     const vendedorIds = assignments?.map(a => a.vendedor_id) || [];
     setVendedoresAtribuidos(vendedorIds);
+    
+    // Fetch vendedores details
+    const { data: vendedoresData } = await supabase
+      .from('usuarios')
+      .select(`
+        id,
+        nome,
+        email,
+        config_vendedores (especialidade_marca)
+      `)
+      .in('id', vendedorIds);
+    
+    if (vendedoresData) {
+      setVendedores(vendedoresData.map((v: any) => ({
+        id: v.id,
+        nome: v.nome,
+        email: v.email,
+        especialidade: v.config_vendedores?.[0]?.especialidade_marca || 'Sem especialidade'
+      })));
+    }
+    
     calcularMetricasSupervisor(vendedorIds);
   };
 
@@ -159,6 +184,24 @@ export default function Atendimentos() {
     return descriptions[type];
   };
 
+  const fetchVendedorMessages = async (vendedorId: string) => {
+    const { data } = await supabase
+      .from("atendimentos")
+      .select(`
+        *,
+        clientes (nome, telefone),
+        mensagens (id, conteudo, created_at, remetente_tipo)
+      `)
+      .eq('vendedor_fixo_id', vendedorId)
+      .order("created_at", { ascending: false });
+    
+    if (data) {
+      setChatMensagens(data);
+    }
+  };
+
+  const selectedVendedor = vendedores.find(v => v.id === selectedVendedorId);
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -171,11 +214,11 @@ export default function Atendimentos() {
 
         {isSupervisor ? (
           // View for Supervisors
-          <Tabs defaultValue="dashboard" className="space-y-6">
+          <Tabs defaultValue="vendedores" className="space-y-6">
             <TabsList className="grid w-full grid-cols-2 lg:w-[500px]">
-              <TabsTrigger value="dashboard" className="gap-2">
-                <BarChart3 className="h-4 w-4" />
-                Dashboard
+              <TabsTrigger value="vendedores" className="gap-2">
+                <User className="h-4 w-4" />
+                Vendedores ({vendedores.length})
               </TabsTrigger>
               <TabsTrigger value="nao-atribuidos" className="gap-2">
                 <AlertCircle className="h-4 w-4" />
@@ -183,8 +226,8 @@ export default function Atendimentos() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Dashboard Tab for Supervisor */}
-            <TabsContent value="dashboard" className="space-y-6">
+            {/* Vendedores Tab for Supervisor */}
+            <TabsContent value="vendedores" className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -251,6 +294,65 @@ export default function Atendimentos() {
                     </p>
                   </CardContent>
                 </Card>
+              </div>
+
+              {/* Vendedores List */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Lista de Vendedores</h3>
+                
+                {vendedores.length === 0 ? (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <User className="h-12 w-12 text-muted-foreground/40 mb-3" />
+                      <p className="text-sm text-muted-foreground">
+                        Nenhum vendedor atribuído
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {vendedores.map((vendedor) => {
+                      const vendedorMetrica = metricas.find(m => m.vendedorId === vendedor.id);
+                      return (
+                        <Card 
+                          key={vendedor.id}
+                          className="cursor-pointer hover:shadow-lg transition-shadow"
+                          onClick={() => {
+                            setSelectedVendedorId(vendedor.id);
+                            fetchVendedorMessages(vendedor.id);
+                          }}
+                        >
+                          <CardHeader>
+                            <CardTitle className="text-base">{vendedor.nome}</CardTitle>
+                            <CardDescription className="text-xs">{vendedor.especialidade}</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Ativos</span>
+                                <span className="font-semibold text-primary">
+                                  {vendedorMetrica?.atendimentosAtivos || 0}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Total</span>
+                                <span className="font-semibold">
+                                  {vendedorMetrica?.totalAtendimentos || 0}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Conversão</span>
+                                <span className="font-semibold text-success">
+                                  {vendedorMetrica?.taxaConversao.toFixed(1) || 0}%
+                                </span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </TabsContent>
 
@@ -752,6 +854,19 @@ export default function Atendimentos() {
             </Card>
           </TabsContent>
         </Tabs>
+        )}
+
+        {/* Vendedor Chat Modal */}
+        {selectedVendedorId && selectedVendedor && (
+          <VendedorChatModal
+            open={!!selectedVendedorId}
+            onClose={() => {
+              setSelectedVendedorId(null);
+              setChatMensagens([]);
+            }}
+            vendedorNome={selectedVendedor.nome}
+            atendimentos={chatMensagens}
+          />
         )}
       </div>
     </MainLayout>

@@ -140,21 +140,16 @@ export default function Configuracoes() {
               <Separator />
 
               <div className="rounded-lg border border-secondary/30 bg-secondary/5 p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary">
-                    <Users className="h-4 w-4 text-secondary-foreground" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground mb-2">
-                      Supervisor Responsável
-                    </p>
-                    <Badge className="bg-secondary text-secondary-foreground text-base py-2 px-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Supervisor Responsável</Label>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge className="text-base py-2 px-4 bg-secondary">
                       {supervisorNome}
                     </Badge>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Seu supervisor poderá visualizar e intervir nos seus atendimentos quando necessário.
-                    </p>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Seu supervisor poderá visualizar e intervir nos seus atendimentos quando necessário.
+                  </p>
                 </div>
               </div>
             </CardContent>
