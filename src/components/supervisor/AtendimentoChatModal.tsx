@@ -8,12 +8,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Send, MessageSquare, Image as ImageIcon } from "lucide-react";
+import { Loader2, Send, MessageSquare, Image as ImageIcon, Trash2 } from "lucide-react";
 import { AudioRecorder } from "@/components/chat/AudioRecorder";
 import { FileUpload } from "@/components/chat/FileUpload";
 import { ImagePreviewDialog } from "@/components/chat/ImagePreviewDialog";
 import { useToast } from "@/hooks/use-toast";
 import { compressImage, shouldCompress } from "@/lib/imageCompression";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Message {
   id: string;
@@ -61,12 +71,18 @@ export function AtendimentoChatModal({
   const MESSAGES_PER_PAGE = 10;
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const scrollElement = scrollRef.current;
+      // Rolar para o final imediatamente
+      setTimeout(() => {
+        scrollElement.scrollTop = scrollElement.scrollHeight;
+      }, 100);
     }
-  }, [mensagens]);
+  }, [mensagens, atendimentoId]);
 
   useEffect(() => {
     const fetchSupervisorInfo = async () => {
@@ -453,6 +469,50 @@ export function AtendimentoChatModal({
     return colors[status] || "bg-muted text-muted-foreground";
   };
 
+  const handleDeleteContact = async () => {
+    if (!atendimentoId) return;
+    
+    setIsDeleting(true);
+    try {
+      // Buscar o cliente_id do atendimento
+      const { data: atendimento } = await supabase
+        .from('atendimentos')
+        .select('cliente_id')
+        .eq('id', atendimentoId)
+        .single();
+
+      if (!atendimento?.cliente_id) {
+        throw new Error('Cliente não encontrado');
+      }
+
+      // Deletar o cliente (cascade vai deletar atendimentos e mensagens)
+      const { error } = await supabase
+        .from('clientes')
+        .delete()
+        .eq('id', atendimento.cliente_id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Contato excluído",
+        description: "O contato e todo seu histórico foram removidos com sucesso.",
+      });
+
+      // Fechar modal e limpar seleção
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Erro ao excluir contato:', error);
+      toast({
+        title: "Erro ao excluir",
+        description: "Não foi possível excluir o contato. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
   const content = embedded ? (
     // Layout para modo embedded (dentro da página do supervisor)
     <div className="flex flex-col h-full animate-fade-in">
@@ -471,20 +531,34 @@ export function AtendimentoChatModal({
         </div>
       ) : (
         <Tabs defaultValue="chat" className="flex flex-col h-full">
-          <TabsList className="shrink-0 mx-4 mt-2">
-            <TabsTrigger value="chat" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Chat
-            </TabsTrigger>
-            <TabsTrigger value="media" className="flex items-center gap-2">
-              <ImageIcon className="h-4 w-4" />
-              Mídias
-            </TabsTrigger>
-          </TabsList>
+          <div className="shrink-0 mx-4 mt-2 flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="chat" className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Chat
+              </TabsTrigger>
+              <TabsTrigger value="media" className="flex items-center gap-2">
+                <ImageIcon className="h-4 w-4" />
+                Mídias
+              </TabsTrigger>
+            </TabsList>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir
+            </Button>
+          </div>
 
           <TabsContent value="chat" className="flex flex-col flex-1 min-h-0 mt-2">
-            <ScrollArea className="flex-1 px-4" ref={scrollRef}>
-              <div className="space-y-4 py-4">
+            <ScrollArea className="flex-1 px-4 bg-gradient-to-br from-muted/5 via-transparent to-muted/10 relative" ref={scrollRef}>
+              <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{
+                backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 10px, currentColor 10px, currentColor 11px)`
+              }} />
+              <div className="space-y-4 py-4 relative">
                 {hasMore && (
                   <div className="flex justify-center">
                     <Button
@@ -605,20 +679,34 @@ export function AtendimentoChatModal({
       ) : (
         <div className="flex flex-col flex-1 min-h-0">
           <Tabs defaultValue="chat" className="flex flex-col flex-1 min-h-0">
-            <TabsList className="mx-4 mt-2 shrink-0">
-              <TabsTrigger value="chat" className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                Chat
-              </TabsTrigger>
-              <TabsTrigger value="media" className="flex items-center gap-2">
-                <ImageIcon className="h-4 w-4" />
-                Mídias
-              </TabsTrigger>
-            </TabsList>
+            <div className="mx-4 mt-2 shrink-0 flex items-center justify-between">
+              <TabsList>
+                <TabsTrigger value="chat" className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Chat
+                </TabsTrigger>
+                <TabsTrigger value="media" className="flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4" />
+                  Mídias
+                </TabsTrigger>
+              </TabsList>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDeleteDialog(true)}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir
+              </Button>
+            </div>
 
             <TabsContent value="chat" className="flex flex-col flex-1 min-h-0 mt-0">
-              <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef} style={{ maxHeight: '500px' }}>
-                <div className="space-y-4">
+              <ScrollArea className="flex-1 px-4 py-4 bg-gradient-to-br from-muted/5 via-transparent to-muted/10 relative" ref={scrollRef} style={{ maxHeight: '500px' }}>
+                <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{
+                  backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 10px, currentColor 10px, currentColor 11px)`
+                }} />
+                <div className="space-y-4 relative">
                   {hasMore && (
                     <div className="flex justify-center">
                       <Button
@@ -714,28 +802,89 @@ export function AtendimentoChatModal({
   );
 
   if (embedded) {
-    return content;
+    return (
+      <>
+        {content}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir contato</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir este contato? Esta ação removerá permanentemente o contato, todos os atendimentos e mensagens associadas. Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteContact}
+                disabled={isDeleting}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Excluindo...
+                  </>
+                ) : (
+                  'Excluir'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl h-[80vh] flex flex-col overflow-hidden">
-        <DialogHeader className="shrink-0">
-          <DialogTitle className="flex items-center justify-between">
-            <div>
-              <p className="text-lg font-semibold">{clienteNome}</p>
-              <p className="text-sm text-muted-foreground font-normal">{veiculoInfo}</p>
-            </div>
-            <Badge variant="outline" className={getStatusColor(status)}>
-              {status.replace(/_/g, ' ')}
-            </Badge>
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl h-[80vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
+            <DialogTitle className="flex items-center justify-between">
+              <div>
+                <p className="text-lg font-semibold">{clienteNome}</p>
+                <p className="text-sm text-muted-foreground font-normal">{veiculoInfo}</p>
+              </div>
+              <Badge variant="outline" className={getStatusColor(status)}>
+                {status.replace(/_/g, ' ')}
+              </Badge>
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="flex flex-col flex-1 min-h-0">
-          {content}
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div className="flex flex-col flex-1 min-h-0">
+            {content}
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir contato</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este contato? Esta ação removerá permanentemente o contato, todos os atendimentos e mensagens associadas. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteContact}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
