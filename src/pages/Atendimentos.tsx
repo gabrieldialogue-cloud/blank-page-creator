@@ -1377,15 +1377,19 @@ export default function Atendimentos() {
                               onMouseLeave={() => setScrollActiveConversas(false)}
                               className={scrollActiveConversas ? '' : 'overflow-hidden'}
                             >
-                              <ScrollArea className="h-[450px]">
+                              <ScrollArea className="h-[380px]">
                               {filteredAtendimentosVendedor.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full p-8 text-muted-foreground">
                                   <MessageSquare className="h-8 w-8 mb-2 opacity-50" />
                                   <p className="text-sm">Nenhum atendimento encontrado</p>
                                 </div>
                               ) : (
-                                <div className="space-y-3 p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-accent/5 via-transparent to-transparent bg-[length:100%_200px] bg-no-repeat">
-                                   {filteredAtendimentosVendedor.map((atendimento) => {
+                                <div className="relative space-y-3 p-4">
+                                  {/* Textura de fundo */}
+                                  <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--accent)/0.03)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--accent)/0.03)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+                                  <div className="absolute inset-0 bg-gradient-to-b from-accent/5 via-transparent to-accent/5 pointer-events-none" />
+                                  
+                                  <div className="relative space-y-3">{filteredAtendimentosVendedor.map((atendimento) => {
                                      // Get last message with attachment
                                      const lastMessageQuery = supabase
                                        .from("mensagens")
@@ -1513,9 +1517,10 @@ export default function Atendimentos() {
                                             )}
                                           </div>
                                         </div>
-                                      </button>
-                                    );
-                                  })}
+                                       </button>
+                                     );
+                                   })}
+                                  </div>
                                 </div>
                               )}
                             </ScrollArea>

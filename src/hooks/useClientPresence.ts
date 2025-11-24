@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ClientPresence {
@@ -14,6 +14,8 @@ interface UseClientPresenceProps {
 
 export function useClientPresence({ atendimentos, enabled }: UseClientPresenceProps) {
   const [clientPresence, setClientPresence] = useState<Record<string, ClientPresence>>({});
+  const onlineTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
+  const typingTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
 
   useEffect(() => {
     if (!enabled || atendimentos.length === 0) return;
@@ -33,7 +35,7 @@ export function useClientPresence({ atendimentos, enabled }: UseClientPresencePr
           .maybeSingle();
 
         const isRecentlyActive = lastClientMsg && 
-          (new Date().getTime() - new Date(lastClientMsg.created_at).getTime()) < 2 * 60 * 1000; // 2 minutes
+          (new Date().getTime() - new Date(lastClientMsg.created_at).getTime()) < 60 * 1000; // 1 minute
 
         presenceMap[atendimento.id] = {
           atendimentoId: atendimento.id,
@@ -53,29 +55,58 @@ export function useClientPresence({ atendimentos, enabled }: UseClientPresencePr
       
       channel
         .on('broadcast', { event: 'client_online' }, (payload) => {
+          const atendId = atendimento.id;
+          const isOnline = payload.payload.isOnline;
+          
           setClientPresence(prev => ({
             ...prev,
-            [atendimento.id]: {
-              ...prev[atendimento.id],
-              isOnline: payload.payload.isOnline
+            [atendId]: {
+              ...prev[atendId],
+              isOnline: isOnline
             }
           }));
+
+          // Clear existing timeout
+          if (onlineTimeouts.current[atendId]) {
+            clearTimeout(onlineTimeouts.current[atendId]);
+          }
+
+          // If going online, set timeout to clear after 1 minute
+          if (isOnline) {
+            onlineTimeouts.current[atendId] = setTimeout(() => {
+              setClientPresence(prev => ({
+                ...prev,
+                [atendId]: {
+                  ...prev[atendId],
+                  isOnline: false
+                }
+              }));
+            }, 60 * 1000);
+          }
         })
         .on('broadcast', { event: 'client_typing' }, (payload) => {
+          const atendId = atendimento.id;
+          const isTyping = payload.payload.isTyping;
+          
           setClientPresence(prev => ({
             ...prev,
-            [atendimento.id]: {
-              ...prev[atendimento.id],
-              isTyping: payload.payload.isTyping
+            [atendId]: {
+              ...prev[atendId],
+              isTyping: isTyping
             }
           }));
           
-          if (payload.payload.isTyping) {
-            setTimeout(() => {
+          // Clear existing timeout
+          if (typingTimeouts.current[atendId]) {
+            clearTimeout(typingTimeouts.current[atendId]);
+          }
+
+          if (isTyping) {
+            typingTimeouts.current[atendId] = setTimeout(() => {
               setClientPresence(prev => ({
                 ...prev,
-                [atendimento.id]: {
-                  ...prev[atendimento.id],
+                [atendId]: {
+                  ...prev[atendId],
                   isTyping: false
                 }
               }));
@@ -89,26 +120,38 @@ export function useClientPresence({ atendimentos, enabled }: UseClientPresencePr
           filter: `atendimento_id=eq.${atendimento.id}`
         }, (payload: any) => {
           if (payload.new.remetente_tipo === 'cliente') {
+            const atendId = atendimento.id;
+            
             // Cliente enviou mensagem, está online
             setClientPresence(prev => ({
               ...prev,
-              [atendimento.id]: {
-                ...prev[atendimento.id],
+              [atendId]: {
+                ...prev[atendId],
                 isOnline: true,
                 isTyping: false
               }
             }));
             
-            // Clear online status after 2 minutes
-            setTimeout(() => {
+            // Clear typing timeout
+            if (typingTimeouts.current[atendId]) {
+              clearTimeout(typingTimeouts.current[atendId]);
+            }
+
+            // Clear existing online timeout
+            if (onlineTimeouts.current[atendId]) {
+              clearTimeout(onlineTimeouts.current[atendId]);
+            }
+
+            // Clear online status after 1 minute of inactivity
+            onlineTimeouts.current[atendId] = setTimeout(() => {
               setClientPresence(prev => ({
                 ...prev,
-                [atendimento.id]: {
-                  ...prev[atendimento.id],
+                [atendId]: {
+                  ...prev[atendId],
                   isOnline: false
                 }
               }));
-            }, 2 * 60 * 1000);
+            }, 60 * 1000);
           }
         })
         .subscribe();
@@ -117,6 +160,12 @@ export function useClientPresence({ atendimentos, enabled }: UseClientPresencePr
     });
 
     return () => {
+      // Clear all timeouts
+      Object.values(onlineTimeouts.current).forEach(timeout => clearTimeout(timeout));
+      Object.values(typingTimeouts.current).forEach(timeout => clearTimeout(timeout));
+      onlineTimeouts.current = {};
+      typingTimeouts.current = {};
+      
       channels.forEach(channel => {
         supabase.removeChannel(channel);
       });
