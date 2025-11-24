@@ -28,7 +28,7 @@ import { useRealtimeMessages } from "@/hooks/useRealtimeMessages";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
 import { useLastMessages } from "@/hooks/useLastMessages";
 import { useClientPresence } from "@/hooks/useClientPresence";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ClientAvatar } from "@/components/ui/client-avatar";
 
 type DetailType = 
   | "ia_respondendo"
@@ -1467,22 +1467,11 @@ export default function Atendimentos() {
                                           >
                                             <div className="flex items-start justify-between mb-1.5">
                                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                                              <Avatar className="h-10 w-10 border-2 border-accent/30">
-                                                {atendimento.clientes?.profile_picture_url ? (
-                                                  <AvatarImage
-                                                    src={atendimento.clientes.profile_picture_url}
-                                                    alt={atendimento.clientes?.push_name || atendimento.clientes?.nome || 'Cliente'}
-                                                  />
-                                                ) : null}
-                                                <AvatarFallback>
-                                                  {(atendimento.clientes?.push_name || atendimento.clientes?.nome || 'C')
-                                                    .split(' ')
-                                                    .map((n) => n[0])
-                                                    .join('')
-                                                    .slice(0, 2)
-                                                    .toUpperCase()}
-                                                </AvatarFallback>
-                                              </Avatar>
+                                              <ClientAvatar
+                                                name={atendimento.clientes?.push_name || atendimento.clientes?.nome || 'Cliente'}
+                                                imageUrl={atendimento.clientes?.profile_picture_url}
+                                                className="h-10 w-10 border-2 border-accent/30"
+                                              />
                                               <div className="flex-1 min-w-0">
                                                   <div className="flex items-center gap-2">
                                                     <span className="font-semibold text-sm block truncate">
@@ -1592,14 +1581,13 @@ export default function Atendimentos() {
                           <CardHeader className="border-b">
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center gap-3">
-                                {selectedAtendimentoIdVendedor && atendimentosVendedor.find(a => a.id === selectedAtendimentoIdVendedor)?.clientes?.profile_picture_url ? (
-                                  <img 
-                                    src={atendimentosVendedor.find(a => a.id === selectedAtendimentoIdVendedor)?.clientes?.profile_picture_url || ''} 
-                                    alt="Perfil" 
-                                    className="h-12 w-12 rounded-full object-cover border-2 border-accent/30"
-                                    onError={(e) => {
-                                      e.currentTarget.style.display = 'none';
-                                    }}
+                                {selectedAtendimentoIdVendedor && atendimentosVendedor.find(a => a.id === selectedAtendimentoIdVendedor)?.clientes ? (
+                                  <ClientAvatar
+                                    name={atendimentosVendedor.find(a => a.id === selectedAtendimentoIdVendedor)?.clientes?.push_name || 
+                                          atendimentosVendedor.find(a => a.id === selectedAtendimentoIdVendedor)?.clientes?.nome || 
+                                          'Cliente'}
+                                    imageUrl={atendimentosVendedor.find(a => a.id === selectedAtendimentoIdVendedor)?.clientes?.profile_picture_url}
+                                    className="h-12 w-12 border-2 border-accent/30"
                                   />
                                 ) : selectedAtendimentoIdVendedor ? (
                                   <div className="h-12 w-12 rounded-full bg-accent/20 flex items-center justify-center">
