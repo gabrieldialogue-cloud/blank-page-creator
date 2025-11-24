@@ -1,11 +1,13 @@
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Users, Loader2 } from "lucide-react";
+import { MessageSquare, Users, Loader2, ChevronLeft, ChevronRight, User, Phone, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { VendedorChatModal } from "@/components/supervisor/VendedorChatModal";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 interface Vendedor {
   id: string;
@@ -19,6 +21,9 @@ interface Atendimento {
   id: string;
   marca_veiculo: string;
   modelo_veiculo: string | null;
+  ano_veiculo: string | null;
+  placa: string | null;
+  resumo_necessidade: string | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -41,6 +46,22 @@ export default function SupervisorAtendimentos() {
   const [loading, setLoading] = useState(true);
   const [selectedMarca, setSelectedMarca] = useState<string | null>(null);
   const [selectedVendedor, setSelectedVendedor] = useState<Vendedor | null>(null);
+  const [selectedAtendimento, setSelectedAtendimento] = useState<Atendimento | null>(null);
+  
+  // Estados para controlar colunas colapsadas
+  const [collapsedColumns, setCollapsedColumns] = useState({
+    marcas: false,
+    vendedores: false,
+    contato: false,
+    chat: false
+  });
+
+  const toggleColumn = (column: keyof typeof collapsedColumns) => {
+    setCollapsedColumns(prev => ({
+      ...prev,
+      [column]: !prev[column]
+    }));
+  };
 
   useEffect(() => {
     fetchData();
@@ -167,6 +188,26 @@ export default function SupervisorAtendimentos() {
     vendedoresAtribuidos.includes(v.id)
   );
 
+  // Fetch atendimentos do vendedor selecionado para mostrar no card de contato
+  const atendimentosDoVendedor = selectedVendedor 
+    ? atendimentos.filter(a => a.vendedor_fixo_id === selectedVendedor.id)
+    : [];
+
+  // Calcular span das colunas baseado nas colunas colapsadas
+  const getColumnSpan = () => {
+    const collapsedCount = Object.values(collapsedColumns).filter(Boolean).length;
+    const activeColumns = 4 - collapsedCount;
+    
+    return {
+      marcas: collapsedColumns.marcas ? 1 : Math.floor(12 / activeColumns),
+      vendedores: collapsedColumns.vendedores ? 1 : Math.floor(12 / activeColumns),
+      contato: collapsedColumns.contato ? 1 : Math.floor(12 / activeColumns),
+      chat: collapsedColumns.chat ? 1 : Math.floor(12 / activeColumns)
+    };
+  };
+
+  const columnSpan = getColumnSpan();
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -191,13 +232,24 @@ export default function SupervisorAtendimentos() {
         ) : (
           <div className="grid grid-cols-12 gap-4">
             {/* Column 1: Marcas */}
-            <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle className="text-base">Marcas</CardTitle>
+            <Card className={`col-span-${columnSpan.marcas} transition-all duration-300`}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-base">
+                  {!collapsedColumns.marcas && "Marcas"}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleColumn('marcas')}
+                  className="h-8 w-8 p-0"
+                >
+                  {collapsedColumns.marcas ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                </Button>
               </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[600px]">
-                  <div className="space-y-1 p-4">
+              {!collapsedColumns.marcas && (
+                <CardContent className="p-0">
+                  <ScrollArea className="h-[600px]">
+                    <div className="space-y-1 p-4">
                     {(() => {
                       const marcas = Array.from(
                         new Set(
@@ -235,22 +287,36 @@ export default function SupervisorAtendimentos() {
                         </button>
                       ));
                     })()}
-                  </div>
-                </ScrollArea>
-              </CardContent>
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              )}
             </Card>
 
             {/* Column 2: Vendedores */}
-            <Card className="col-span-3">
-              <CardHeader>
+            <Card className={`col-span-${columnSpan.vendedores} transition-all duration-300`}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                 <CardTitle className="text-base">
-                  Vendedores
-                  {selectedMarca && ` - ${selectedMarca}`}
+                  {!collapsedColumns.vendedores && (
+                    <>
+                      Vendedores
+                      {selectedMarca && ` - ${selectedMarca}`}
+                    </>
+                  )}
                 </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleColumn('vendedores')}
+                  className="h-8 w-8 p-0"
+                >
+                  {collapsedColumns.vendedores ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                </Button>
               </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[600px]">
-                  {!selectedMarca ? (
+              {!collapsedColumns.vendedores && (
+                <CardContent className="p-0">
+                  <ScrollArea className="h-[600px]">
+                    {!selectedMarca ? (
                     <div className="flex flex-col items-center justify-center h-full py-20">
                       <Users className="h-12 w-12 text-muted-foreground/40 mb-3" />
                       <p className="text-sm text-muted-foreground">
@@ -282,36 +348,206 @@ export default function SupervisorAtendimentos() {
                             </div>
                           </button>
                         ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
+                      </div>
+                    )}
+                  </ScrollArea>
+                </CardContent>
+              )}
             </Card>
 
-            {/* Column 3: Chat ao Vivo */}
-            <Card className="col-span-6">
-              <CardHeader>
+            {/* Column 3: Card de Contato */}
+            <Card className={`col-span-${columnSpan.contato} transition-all duration-300`}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                 <CardTitle className="text-base">
-                  Chat ao Vivo
-                  {selectedVendedor && ` - ${selectedVendedor.nome}`}
+                  {!collapsedColumns.contato && "Contato"}
                 </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleColumn('contato')}
+                  className="h-8 w-8 p-0"
+                >
+                  {collapsedColumns.contato ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                </Button>
               </CardHeader>
-              <CardContent>
-                {!selectedVendedor ? (
-                  <div className="flex flex-col items-center justify-center h-[600px]">
-                    <MessageSquare className="h-12 w-12 text-muted-foreground/40 mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      Selecione um vendedor para ver o chat
-                    </p>
-                  </div>
-                ) : (
-                  <VendedorChatModal
-                    vendedorId={selectedVendedor.id}
-                    vendedorNome={selectedVendedor.nome}
-                    embedded={true}
-                  />
-                )}
-              </CardContent>
+              {!collapsedColumns.contato && (
+                <CardContent className="p-0">
+                  <ScrollArea className="h-[600px]">
+                    {!selectedVendedor ? (
+                      <div className="flex flex-col items-center justify-center h-full py-20">
+                        <User className="h-12 w-12 text-muted-foreground/40 mb-3" />
+                        <p className="text-sm text-muted-foreground">
+                          Selecione um vendedor
+                        </p>
+                      </div>
+                    ) : !selectedAtendimento ? (
+                      <div className="space-y-1 p-4">
+                        {atendimentosDoVendedor.length === 0 ? (
+                          <p className="text-sm text-muted-foreground text-center py-8">
+                            Nenhum atendimento ativo
+                          </p>
+                        ) : (
+                          atendimentosDoVendedor.map((atendimento) => (
+                            <button
+                              key={atendimento.id}
+                              onClick={() => setSelectedAtendimento(atendimento)}
+                              className="w-full text-left px-4 py-3 rounded-lg transition-colors hover:bg-muted"
+                            >
+                              <div className="font-medium">
+                                {atendimento.clientes?.nome || 'Cliente'}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {atendimento.marca_veiculo} {atendimento.modelo_veiculo}
+                              </div>
+                              <Badge className="mt-2" variant="outline">
+                                {atendimento.status}
+                              </Badge>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    ) : (
+                      <div className="p-4 space-y-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedAtendimento(null)}
+                          className="mb-2"
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-2" />
+                          Voltar
+                        </Button>
+                        
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                              <User className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold">
+                                {selectedAtendimento.clientes?.nome || 'Cliente'}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                {selectedAtendimento.clientes?.telefone}
+                              </p>
+                            </div>
+                          </div>
+
+                          <Separator />
+
+                          <div className="space-y-3">
+                            <div className="flex items-start gap-3">
+                              <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
+                              <div>
+                                <p className="text-sm font-medium">Telefone</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {selectedAtendimento.clientes?.telefone}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-start gap-3">
+                              <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
+                              <div>
+                                <p className="text-sm font-medium">Veículo</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {selectedAtendimento.marca_veiculo} {selectedAtendimento.modelo_veiculo}
+                                </p>
+                              </div>
+                            </div>
+
+                            {selectedAtendimento.ano_veiculo && (
+                              <div className="flex items-start gap-3">
+                                <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                <div>
+                                  <p className="text-sm font-medium">Ano</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {selectedAtendimento.ano_veiculo}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedAtendimento.placa && (
+                              <div className="flex items-start gap-3">
+                                <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                <div>
+                                  <p className="text-sm font-medium">Placa</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {selectedAtendimento.placa}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="flex items-start gap-3">
+                              <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
+                              <div>
+                                <p className="text-sm font-medium">Status</p>
+                                <Badge variant="outline" className="mt-1">
+                                  {selectedAtendimento.status}
+                                </Badge>
+                              </div>
+                            </div>
+
+                            {selectedAtendimento.resumo_necessidade && (
+                              <div className="flex items-start gap-3">
+                                <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                <div>
+                                  <p className="text-sm font-medium">Necessidade</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {selectedAtendimento.resumo_necessidade}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </ScrollArea>
+                </CardContent>
+              )}
+            </Card>
+
+            {/* Column 4: Chat ao Vivo */}
+            <Card className={`col-span-${columnSpan.chat} transition-all duration-300`}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-base">
+                  {!collapsedColumns.chat && (
+                    <>
+                      Chat ao Vivo
+                      {selectedVendedor && ` - ${selectedVendedor.nome}`}
+                    </>
+                  )}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleColumn('chat')}
+                  className="h-8 w-8 p-0"
+                >
+                  {collapsedColumns.chat ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                </Button>
+              </CardHeader>
+              {!collapsedColumns.chat && (
+                <CardContent>
+                  {!selectedAtendimento ? (
+                    <div className="flex flex-col items-center justify-center h-[600px]">
+                      <MessageSquare className="h-12 w-12 text-muted-foreground/40 mb-3" />
+                      <p className="text-sm text-muted-foreground">
+                        Selecione um atendimento para ver o chat
+                      </p>
+                    </div>
+                  ) : (
+                    <VendedorChatModal
+                      vendedorId={selectedVendedor!.id}
+                      vendedorNome={selectedVendedor!.nome}
+                      embedded={true}
+                    />
+                  )}
+                </CardContent>
+              )}
             </Card>
           </div>
         )}
