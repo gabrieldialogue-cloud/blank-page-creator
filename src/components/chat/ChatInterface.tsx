@@ -174,7 +174,7 @@ export function ChatInterface({
           </ScrollArea>
 
           {/* Input */}
-          <div className="border-t border-border/40 bg-gradient-to-br from-background to-muted/20 p-6">
+          <div className="border-t border-border/40 bg-gradient-to-br from-background to-muted/20 p-6 shadow-[inset_0_8px_12px_-8px_rgba(0,0,0,0.1)]">
             <div className="flex gap-3 items-end bg-card/60 backdrop-blur-sm p-3 rounded-3xl shadow-lg border border-border/50">
               <Textarea
                 value={message}
