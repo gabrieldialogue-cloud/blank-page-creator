@@ -103,7 +103,7 @@ export default function SupervisorAtendimentos() {
         return newState;
       }
       
-      // Em telas pequenas, manter comportamento exclusivo
+      // Em telas pequenas, permitir no máximo 2 colunas abertas
       if (isCurrentlyCollapsed) {
         // Abrindo uma coluna
         if (column === 'vendedores' && !selectedMarca) {
@@ -113,28 +113,21 @@ export default function SupervisorAtendimentos() {
           return prev; // Não permite abrir chat sem vendedor selecionado
         }
         
-        // Se abrindo Marcas, fechar Vendedores e Chat obrigatoriamente
-        if (column === 'marcas') {
-          return {
-            marcas: false,
-            vendedores: true,
-            chat: true
-          };
+        // Contar quantas colunas já estão abertas
+        const currentOpenCount = Object.values(prev).filter(v => !v).length;
+        
+        if (currentOpenCount >= 2) {
+          // Já tem 2 abertas, então fechar a primeira (da esquerda) ao abrir uma nova
+          const hierarchy: (keyof typeof collapsedColumns)[] = ['marcas', 'vendedores', 'chat'];
+          const openColumns = hierarchy.filter(col => !prev[col]);
+          
+          // Fechar a primeira coluna aberta (mais à esquerda)
+          if (openColumns.length > 0) {
+            newState[openColumns[0]] = true;
+          }
         }
         
-        // Se abrindo Vendedores, fechar Marcas obrigatoriamente
-        if (column === 'vendedores') {
-          return {
-            marcas: true,
-            vendedores: false,
-            chat: prev.chat
-          };
-        }
-        
-        // Se abrindo Chat, sem restrições especiais
-        if (column === 'chat') {
-          newState[column] = false;
-        }
+        newState[column] = false;
       } else {
         // Fechando uma coluna - não permite fechar se é a única coluna aberta
         const openColumns = Object.values(prev).filter(v => !v).length;
@@ -428,21 +421,11 @@ export default function SupervisorAtendimentos() {
                                 setSelectedMarca(marca || null);
                                 setSelectedVendedor(null);
                                 setSelectedAtendimento(null);
-                                // Abrir a coluna de vendedores
-                                if (isMobile) {
-                                  // Em mobile, fechar marcas e abrir vendedores
-                                  setCollapsedColumns({
-                                    marcas: true,
-                                    vendedores: false,
-                                    chat: true
-                                  });
-                                } else {
-                                  // Em desktop, manter marcas aberta e abrir vendedores
-                                  setCollapsedColumns(prev => ({
-                                    ...prev,
-                                    vendedores: false
-                                  }));
-                                }
+                                // Abrir a coluna de vendedores mantendo marcas aberta em ambos os casos
+                                setCollapsedColumns(prev => ({
+                                  ...prev,
+                                  vendedores: false
+                                }));
                               }}
                               className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
                                 selectedMarca === marca
@@ -535,20 +518,10 @@ export default function SupervisorAtendimentos() {
                                       setSelectedVendedor(vendedor);
                                       setSelectedAtendimento(null);
                                       // Abrir a coluna de chat automaticamente
-                                      if (isMobile) {
-                                        // Em mobile, fechar marcas e manter vendedores
-                                        setCollapsedColumns(prev => ({
-                                          marcas: true,
-                                          vendedores: prev.vendedores,
-                                          chat: false
-                                        }));
-                                      } else {
-                                        // Em desktop, manter todas abertas
-                                        setCollapsedColumns(prev => ({
-                                          ...prev,
-                                          chat: false
-                                        }));
-                                      }
+                                      setCollapsedColumns(prev => ({
+                                        ...prev,
+                                        chat: false
+                                      }));
                                     }}
                                     className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
                                       selectedVendedor?.id === vendedor.id
