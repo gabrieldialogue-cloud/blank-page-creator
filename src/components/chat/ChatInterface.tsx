@@ -73,11 +73,29 @@ export function ChatInterface({
 
   const handleAudioRecorded = async (audioBlob: Blob) => {
     try {
-      // Sem conversão cliente: envia o blob original com MIME correto
-      const finalAudioBlob = audioBlob;
-      const finalBlobType = finalAudioBlob.type || 'audio/webm';
-      const extension = finalBlobType.includes('ogg') ? 'ogg' : 'webm';
-      const contentType = finalBlobType;
+      let finalAudioBlob = audioBlob;
+      const blobType = audioBlob.type;
+      
+      // Se não for OGG, converter usando libav.js
+      if (!blobType.includes('ogg')) {
+        console.log('Convertendo áudio de', blobType, 'para OGG/Opus');
+        try {
+          const { convertToOggOpus } = await import('@/lib/audioConversion');
+          finalAudioBlob = await convertToOggOpus(audioBlob);
+          console.log('Áudio convertido com sucesso para OGG/Opus');
+        } catch (conversionError) {
+          console.error('Conversão de áudio falhou:', conversionError);
+          toast({
+            title: "Erro ao processar áudio",
+            description: "Não foi possível converter o áudio para o formato aceito pelo WhatsApp.",
+            variant: "destructive",
+          });
+          throw conversionError;
+        }
+      }
+
+      const contentType = 'audio/ogg';
+      const extension = 'ogg';
       
       // Upload audio to Supabase Storage
       const fileName = `${Date.now()}-audio.${extension}`;
