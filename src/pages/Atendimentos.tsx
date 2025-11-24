@@ -1761,24 +1761,23 @@ export default function Atendimentos() {
                               </TabsList>
                               
                               <TabsContent value="chat" className="mt-0">
-                                <ScrollArea 
-                                  className="h-[60vh] rounded-b-xl relative"
-                                  ref={scrollRef}
+                                <div 
+                                  className="h-[60vh] w-full bg-card/95 backdrop-blur-sm rounded-b-xl relative"
+                                  style={selectedAtendimentoIdVendedor ? {
+                                    backgroundImage:
+                                      "linear-gradient(to right, hsl(var(--muted)/0.25) 1px, transparent 1px)," +
+                                      "linear-gradient(to bottom, hsl(var(--muted)/0.25) 1px, transparent 1px)," +
+                                      "radial-gradient(circle at 20% 20%, hsl(var(--primary)/0.20) 0, transparent 55%)," +
+                                      "radial-gradient(circle at 80% 80%, hsl(var(--accent)/0.20) 0, transparent 55%)",
+                                    backgroundSize: "18px 18px, 18px 18px, 100% 100%, 100% 100%",
+                                  } : {}}
                                 >
-                                  {/* Textura de fundo aplicada diretamente abaixo das mensagens */}
-                                  <div 
-                                    className="w-full bg-card/95 backdrop-blur-sm p-3"
-                                    style={selectedAtendimentoIdVendedor ? {
-                                      minHeight: '60vh',
-                                      backgroundImage:
-                                        "linear-gradient(to right, hsl(var(--muted)/0.25) 1px, transparent 1px)," +
-                                        "linear-gradient(to bottom, hsl(var(--muted)/0.25) 1px, transparent 1px)," +
-                                        "radial-gradient(circle at 20% 20%, hsl(var(--primary)/0.20) 0, transparent 55%)," +
-                                        "radial-gradient(circle at 80% 80%, hsl(var(--accent)/0.20) 0, transparent 55%)",
-                                      backgroundSize: "18px 18px, 18px 18px, 100% 100%, 100% 100%",
-                                    } : { minHeight: '60vh' }}
+                                  <ScrollArea 
+                                    className="h-[calc(60vh-120px)]"
+                                    ref={scrollRef}
                                   >
-                                    <div className="w-full px-2 py-3">
+                                    <div className="w-full p-3">
+                                      <div className="w-full px-2 py-3">
                                         {!selectedAtendimentoIdVendedor ? (
                                           <div className="flex flex-col items-center justify-center text-muted-foreground bg-card p-6" style={{ minHeight: 'calc(60vh - 24px)' }}>
                                             <MessageSquare className="h-12 w-12 mb-4 opacity-50" />
@@ -1863,45 +1862,43 @@ export default function Atendimentos() {
                                          </div>
                                        )}
                                      </div>
-                                   </div>
-                                 </ScrollArea>
-                                
-                                {/* Input Area */}
-                                {selectedAtendimentoIdVendedor && (
-                                  <div className="border-t p-4 bg-muted/30">
-                                    {/* File Preview */}
-                                    {selectedFile && (
-                                      <div className="mb-3 p-3 bg-accent/10 border border-accent/30 rounded-lg flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                          {selectedFile.type.startsWith('image/') ? (
-                                            <ImageIcon className="h-5 w-5 text-accent" />
-                                          ) : (
-                                            <File className="h-5 w-5 text-accent" />
-                                          )}
-                                          <span className="text-sm font-medium truncate max-w-[200px]">
-                                            {selectedFile.name}
-                                          </span>
-                                          <span className="text-xs text-muted-foreground">
-                                            ({(selectedFile.size / 1024).toFixed(1)} KB)
-                                          </span>
+                                    </div>
+                                  </ScrollArea>
+                                 
+                                  {/* Input Area */}
+                                  {selectedAtendimentoIdVendedor && (
+                                    <div className="p-4 border-t border-border/20">
+                                      {selectedFile && (
+                                        <div className="mb-3 p-3 bg-accent/10 border border-accent/30 rounded-lg flex items-center justify-between">
+                                          <div className="flex items-center gap-2">
+                                            {selectedFile.type.startsWith('image/') ? (
+                                              <ImageIcon className="h-5 w-5 text-accent" />
+                                            ) : (
+                                              <File className="h-5 w-5 text-accent" />
+                                            )}
+                                            <span className="text-sm font-medium truncate max-w-[200px]">
+                                              {selectedFile.name}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground">
+                                              ({(selectedFile.size / 1024).toFixed(1)} KB)
+                                            </span>
+                                          </div>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={() => {
+                                              setSelectedFile(null);
+                                              if (fileInputRef.current) {
+                                                fileInputRef.current.value = "";
+                                              }
+                                            }}
+                                          >
+                                            <X className="h-4 w-4" />
+                                          </Button>
                                         </div>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6"
-                                          onClick={() => {
-                                            setSelectedFile(null);
-                                            if (fileInputRef.current) {
-                                              fileInputRef.current.value = "";
-                                            }
-                                          }}
-                                        >
-                                          <X className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    )}
-                                    
-                                    <div className="bg-gradient-to-br from-background to-muted/20 p-4 rounded-2xl">
+                                      )}
+                                      
                                       <div className="flex gap-3 items-end bg-card/60 backdrop-blur-sm p-3 rounded-3xl shadow-lg border border-border/50">
                                         <Input
                                           ref={fileInputRef}
@@ -1946,8 +1943,8 @@ export default function Atendimentos() {
                                         />
                                       </div>
                                     </div>
-                                  </div>
-                                )}
+                                  )}
+                                </div>
                               </TabsContent>
                               
                               <TabsContent value="media" className="mt-0">
