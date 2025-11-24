@@ -866,28 +866,11 @@ export default function Atendimentos() {
     if (!selectedAtendimentoIdVendedor) return;
 
     try {
-      let finalAudioBlob = audioBlob;
-      const blobType = audioBlob.type;
-      let isOgg = blobType.includes('ogg');
-      
-      // Se não for OGG, converter no cliente usando FFmpeg
-      if (!isOgg) {
-        console.log('Converting audio from', blobType, 'to OGG via FFmpeg');
-        try {
-          const { convertToOggOpus } = await import('@/lib/audioConversion');
-          finalAudioBlob = await convertToOggOpus(audioBlob);
-          isOgg = true;
-          console.log('Audio converted successfully to OGG via FFmpeg');
-        } catch (conversionError) {
-          console.warn('Client-side audio conversion failed, sending original format (pode falhar no WhatsApp):', conversionError);
-        }
-      }
-
-      // Determine file extension and content-type based on final blob type
-      const finalBlobType = finalAudioBlob.type;
-      const isOggFinal = isOgg || finalBlobType.includes('ogg');
-      const extension = isOggFinal ? 'ogg' : 'webm';
-      const contentType = isOggFinal ? 'audio/ogg' : finalBlobType;
+      // Sem conversão cliente: envia o blob original com MIME correto
+      const finalAudioBlob = audioBlob;
+      const finalBlobType = finalAudioBlob.type || 'audio/webm';
+      const extension = finalBlobType.includes('ogg') ? 'ogg' : 'webm';
+      const contentType = finalBlobType;
       
       // Upload audio to Supabase Storage
       const fileName = `${Date.now()}-audio.${extension}`;
