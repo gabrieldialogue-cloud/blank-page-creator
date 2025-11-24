@@ -1628,7 +1628,7 @@ export default function Atendimentos() {
                         </p>
                       </div>
                       ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-6">
                           {/* Lista de Atendimentos */}
                           <Card className="lg:col-span-1">
                            <CardHeader>
@@ -1658,7 +1658,21 @@ export default function Atendimentos() {
                                 </div>
                               ) : (
                                 <div className="relative space-y-2 px-3 py-2">
-                                 <div className="relative space-y-2">{filteredAtendimentosVendedor.map((atendimento) => {
+                                 <div className="relative space-y-2">{
+                                   // Ordenar por mensagens não lidas primeiro
+                                   [...filteredAtendimentosVendedor].sort((a, b) => {
+                                     const unreadA = unreadCountsVendedor[a.id] || 0;
+                                     const unreadB = unreadCountsVendedor[b.id] || 0;
+                                     
+                                     // Se um tem não lidas e outro não, priorizar o que tem
+                                     if (unreadA > 0 && unreadB === 0) return -1;
+                                     if (unreadA === 0 && unreadB > 0) return 1;
+                                     
+                                     // Se ambos têm ou ambos não têm, ordenar por data da última mensagem
+                                     const dateA = new Date(lastMessages[a.id]?.createdAt || a.created_at).getTime();
+                                     const dateB = new Date(lastMessages[b.id]?.createdAt || b.created_at).getTime();
+                                     return dateB - dateA;
+                                   }).map((atendimento) => {
                                      // Get last message with attachment
                                      const lastMessageQuery = supabase
                                        .from("mensagens")
@@ -1673,6 +1687,7 @@ export default function Atendimentos() {
                                            key={atendimento.id}
                                             onClick={() => {
                                               setSelectedAtendimentoIdVendedor(atendimento.id);
+                                              // Marcar mensagens como lidas quando clicar no card
                                               clearUnreadCount(atendimento.id);
                                               markMessagesAsRead(atendimento.id);
                                             }}
