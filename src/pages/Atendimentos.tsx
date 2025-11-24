@@ -870,28 +870,16 @@ export default function Atendimentos() {
       const blobType = audioBlob.type;
       let isOgg = blobType.includes('ogg');
       
-      // Se não for OGG, converter usando edge function
+      // Se não for OGG, converter no cliente usando FFmpeg
       if (!isOgg) {
-        console.log('Converting audio from', blobType, 'to OGG');
-        
+        console.log('Converting audio from', blobType, 'to OGG via FFmpeg');
         try {
-          const convertResponse = await supabase.functions.invoke('convert-audio', {
-            body: audioBlob,
-            headers: {
-              'Content-Type': blobType,
-            },
-          });
-
-          if (convertResponse.error) {
-            console.warn('Conversion failed, using original:', convertResponse.error);
-          } else if (convertResponse.data) {
-            // Convert response data to Blob (forçar mime type simples para o WhatsApp)
-            finalAudioBlob = new Blob([convertResponse.data], { type: 'audio/ogg' });
-            isOgg = true;
-            console.log('Audio converted successfully to OGG');
-          }
+          const { convertToOggOpus } = await import('@/lib/audioConversion');
+          finalAudioBlob = await convertToOggOpus(audioBlob);
+          isOgg = true;
+          console.log('Audio converted successfully to OGG via FFmpeg');
         } catch (conversionError) {
-          console.warn('Audio conversion failed, using original:', conversionError);
+          console.warn('Client-side audio conversion failed, sending original format (pode falhar no WhatsApp):', conversionError);
         }
       }
 
