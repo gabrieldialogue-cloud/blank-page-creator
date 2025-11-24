@@ -174,6 +174,35 @@ export function ChatMessage({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const handleDownloadAudio = async () => {
+    if (!attachmentUrl) return;
+    
+    try {
+      const response = await fetch(attachmentUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `audio-${format(new Date(createdAt), "ddMMyyyy-HHmmss")}.ogg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Áudio baixado",
+        description: "O arquivo foi salvo no seu dispositivo.",
+      });
+    } catch (error) {
+      console.error("Erro ao baixar áudio:", error);
+      toast({
+        title: "Erro ao baixar",
+        description: "Não foi possível baixar o áudio.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleTranscribe = async () => {
     if (!attachmentUrl || !messageId) return;
 
@@ -433,6 +462,15 @@ export function ChatMessage({
                   >
                     <span className="mr-1">⚡</span>
                     {playbackRate}x
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadAudio}
+                    className="h-8 px-3 text-xs font-semibold rounded-xl shadow-sm hover:shadow-md transition-all border-2"
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                    Baixar
                   </Button>
                   {!localTranscription && (
                     <Button
