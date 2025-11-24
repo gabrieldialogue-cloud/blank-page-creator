@@ -1656,7 +1656,7 @@ export default function Atendimentos() {
                                   <p className="text-xs">Nenhum atendimento encontrado</p>
                                 </div>
                               ) : (
-                                <div className="relative space-y-2 px-3 py-2">
+                                <div className="relative space-y-2 px-2 py-2">
                                  <div className="relative space-y-2">{
                                    // Sort to pin selected atendimento at the top
                                    [...filteredAtendimentosVendedor].sort((a, b) => {
@@ -1681,32 +1681,32 @@ export default function Atendimentos() {
                                               clearUnreadCount(atendimento.id);
                                               markMessagesAsRead(atendimento.id);
                                             }}
-                                                className={`w-full text-left px-3 py-3 rounded-lg transition-all duration-200 hover:scale-[1.01] bg-gradient-to-b from-accent/8 to-transparent ${
+                                                className={`w-full text-left px-2 py-2.5 rounded-lg transition-all duration-200 hover:scale-[1.01] bg-gradient-to-b from-accent/8 to-transparent ${
                                                   selectedAtendimentoIdVendedor === atendimento.id 
                                                     ? 'border-2 border-primary shadow-md bg-primary/5 ring-2 ring-primary/20' 
                                                     : 'border-2 border-border hover:border-primary/30 hover:shadow-sm'
                                                 }`}
                                           >
                                              <div className="flex items-start justify-between mb-2">
-                                             <div className="flex items-center gap-2 flex-1 min-w-0">
+                                             <div className="flex items-center gap-1.5 flex-1 min-w-0">
                                                <ClientAvatar
                                                  name={atendimento.clientes?.push_name || atendimento.clientes?.nome || 'Cliente'}
                                                  imageUrl={atendimento.clientes?.profile_picture_url}
-                                                 className="h-12 w-12 border-2 border-accent/30"
+                                                 className="h-10 w-10 border-2 border-accent/30 shrink-0"
                                                />
-                                               <div className="flex-1 min-w-0 space-y-1">
-                                                   <div className="flex items-center gap-2">
-                                                     <span className="font-semibold text-sm block truncate">
+                                               <div className="flex-1 min-w-0 space-y-0.5">
+                                                   <div className="flex items-center gap-1.5">
+                                                     <span className="font-semibold text-xs block truncate">
                                                        {atendimento.clientes?.push_name || atendimento.clientes?.nome || "Cliente"}
                                                      </span>
                                                      {clientPresence[atendimento.id]?.isTyping && (
-                                                       <span className="text-[10px] text-success font-medium flex items-center gap-1">
+                                                       <span className="text-[9px] text-success font-medium flex items-center gap-1 shrink-0">
                                                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
                                                          digitando...
                                                        </span>
                                                      )}
                                                      {!clientPresence[atendimento.id]?.isTyping && clientPresence[atendimento.id]?.isOnline && (
-                                                       <span className="inline-block h-2 w-2 rounded-full bg-success" title="Online" />
+                                                       <span className="inline-block h-1.5 w-1.5 rounded-full bg-success shrink-0" title="Online" />
                                                      )}
                                                    </div>
                                                    {atendimento.clientes?.telefone && (
@@ -1716,96 +1716,96 @@ export default function Atendimentos() {
                                                          navigator.clipboard.writeText(atendimento.clientes.telefone);
                                                          toast.success("Número copiado!");
                                                        }}
-                                                       className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                                                       className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
                                                        title="Copiar número"
                                                      >
-                                                       <Phone className="h-3 w-3" />
-                                                       <span>{atendimento.clientes.telefone}</span>
-                                                       <Copy className="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                       <Phone className="h-2.5 w-2.5 shrink-0" />
+                                                       <span className="truncate">{atendimento.clientes.telefone}</span>
+                                                       <Copy className="h-2 w-2 shrink-0" />
                                                      </button>
                                                    )}
-                                                 {lastMessages[atendimento.id] ? (
-                                                   <div className="flex items-start gap-1.5 mt-1">
-                                                     {lastMessages[atendimento.id].attachmentType && (
-                                                       lastMessages[atendimento.id].attachmentType === 'image' ? (
-                                                         <ImageIcon className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
-                                                       ) : lastMessages[atendimento.id].attachmentType === 'audio' ? (
-                                                         <Mic className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
-                                                       ) : (
-                                                         <File className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
-                                                       )
-                                                     )}
-                                                     <span className="text-xs text-muted-foreground line-clamp-2 break-words flex-1">
-                                                       {lastMessages[atendimento.id].remetenteTipo === 'vendedor' && (
-                                                         <span className="font-medium">Você: </span>
-                                                       )}
-                                                       {lastMessages[atendimento.id].attachmentType 
-                                                         ? lastMessages[atendimento.id].attachmentType === 'image' 
-                                                           ? 'Imagem' 
-                                                           : lastMessages[atendimento.id].attachmentType === 'audio'
-                                                             ? 'Áudio'
-                                                             : 'Documento'
-                                                         : (lastMessages[atendimento.id].conteudo?.substring(0, 60) || 'Mensagem') + 
-                                                           (lastMessages[atendimento.id].conteudo?.length > 60 ? '...' : '')}
-                                                     </span>
-                                                   </div>
-                                                 ) : (
-                                                   <span className="text-xs text-muted-foreground mt-1 block">
-                                                     Sem mensagens ainda
-                                                   </span>
-                                                 )}
+                                                  {lastMessages[atendimento.id] ? (
+                                                    <div className="flex items-start gap-1 mt-0.5">
+                                                      {lastMessages[atendimento.id].attachmentType && (
+                                                        lastMessages[atendimento.id].attachmentType === 'image' ? (
+                                                          <ImageIcon className="h-2.5 w-2.5 text-muted-foreground shrink-0 mt-0.5" />
+                                                        ) : lastMessages[atendimento.id].attachmentType === 'audio' ? (
+                                                          <Mic className="h-2.5 w-2.5 text-muted-foreground shrink-0 mt-0.5" />
+                                                        ) : (
+                                                          <File className="h-2.5 w-2.5 text-muted-foreground shrink-0 mt-0.5" />
+                                                        )
+                                                      )}
+                                                      <span className="text-[10px] text-muted-foreground line-clamp-1 break-words flex-1">
+                                                        {lastMessages[atendimento.id].remetenteTipo === 'vendedor' && (
+                                                          <span className="font-medium">Você: </span>
+                                                        )}
+                                                        {lastMessages[atendimento.id].attachmentType 
+                                                          ? lastMessages[atendimento.id].attachmentType === 'image' 
+                                                            ? 'Imagem' 
+                                                            : lastMessages[atendimento.id].attachmentType === 'audio'
+                                                              ? 'Áudio'
+                                                              : 'Documento'
+                                                          : (lastMessages[atendimento.id].conteudo?.substring(0, 40) || 'Mensagem') + 
+                                                            (lastMessages[atendimento.id].conteudo?.length > 40 ? '...' : '')}
+                                                      </span>
+                                                    </div>
+                                                  ) : (
+                                                    <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                                                      Sem mensagens ainda
+                                                    </span>
+                                                  )}
                                                </div>
                                             </div>
-                                            <div className="flex flex-col items-end gap-1">
-                                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                {unreadCountsVendedor[atendimento.id] > 0 && (
-                                                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                                                    {unreadCountsVendedor[atendimento.id]}
-                                                  </Badge>
-                                                )}
-                                                <span className="whitespace-nowrap">
-                                                  {format(new Date(lastMessages[atendimento.id]?.createdAt || atendimento.created_at), "dd/MM HH:mm", { locale: ptBR })}
-                                                </span>
-                                              </div>
-                                              {lastMessages[atendimento.id]?.remetenteTipo === 'vendedor' && (
-                                                <span className="flex items-center">
-                                                  {lastMessages[atendimento.id].readAt ? (
-                                                    <CheckCheck className="h-3 w-3 text-success" />
-                                                  ) : lastMessages[atendimento.id].deliveredAt ? (
-                                                    <CheckCheck className="h-3 w-3 opacity-60" />
-                                                  ) : (
-                                                    <Check className="h-3 w-3 opacity-60" />
-                                                  )}
-                                                </span>
-                                              )}
+                                             <div className="flex flex-col items-end gap-0.5 shrink-0">
+                                               <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                                 {unreadCountsVendedor[atendimento.id] > 0 && (
+                                                   <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4">
+                                                     {unreadCountsVendedor[atendimento.id]}
+                                                   </Badge>
+                                                 )}
+                                                 <span className="whitespace-nowrap text-[10px]">
+                                                   {format(new Date(lastMessages[atendimento.id]?.createdAt || atendimento.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                                                 </span>
+                                               </div>
+                                               {lastMessages[atendimento.id]?.remetenteTipo === 'vendedor' && (
+                                                 <span className="flex items-center">
+                                                   {lastMessages[atendimento.id].readAt ? (
+                                                     <CheckCheck className="h-2.5 w-2.5 text-success" />
+                                                   ) : lastMessages[atendimento.id].deliveredAt ? (
+                                                     <CheckCheck className="h-2.5 w-2.5 opacity-60" />
+                                                   ) : (
+                                                     <Check className="h-2.5 w-2.5 opacity-60" />
+                                                   )}
+                                                 </span>
+                                               )}
                                             </div>
                                           </div>
-                                          <div className="flex items-center justify-between">
-                                            <p className="text-xs text-muted-foreground">
-                                              {atendimento.marca_veiculo} {atendimento.modelo_veiculo}
-                                            </p>
-                                            <div className="flex items-center gap-2">
-                                              {getStatusBadge(atendimento.status)}
-                                              {lastMessages[atendimento.id]?.attachmentCount > 0 && (
-                                                <Badge variant="outline" className="text-xs gap-1">
-                                                  <Paperclip className="h-3 w-3" />
-                                                  {lastMessages[atendimento.id].attachmentCount}
-                                                </Badge>
-                                              )}
-                                            </div>
-                                            {!clientPresence[atendimento.id]?.isTyping && !clientPresence[atendimento.id]?.isOnline && clientPresence[atendimento.id]?.lastSeenAt && (
-                                              <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                                                visto {(() => {
-                                                  const lastSeen = new Date(clientPresence[atendimento.id].lastSeenAt!);
-                                                  const diffInSeconds = Math.floor((now - lastSeen.getTime()) / 1000);
-                                                  
-                                                  if (diffInSeconds < 60) return 'agora';
-                                                  if (diffInSeconds < 3600) return `há ${Math.floor(diffInSeconds / 60)}m`;
-                                                  if (diffInSeconds < 86400) return `há ${Math.floor(diffInSeconds / 3600)}h`;
-                                                  return `há ${Math.floor(diffInSeconds / 86400)}d`;
-                                                })()}
-                                              </span>
-                                            )}
+                                           <div className="flex items-center justify-between gap-2">
+                                             <p className="text-[10px] text-muted-foreground truncate flex-1">
+                                               {atendimento.marca_veiculo} {atendimento.modelo_veiculo}
+                                             </p>
+                                             <div className="flex items-center gap-1 shrink-0">
+                                               {getStatusBadge(atendimento.status)}
+                                               {lastMessages[atendimento.id]?.attachmentCount > 0 && (
+                                                 <Badge variant="outline" className="text-[9px] gap-0.5 px-1 py-0 h-4">
+                                                   <Paperclip className="h-2.5 w-2.5" />
+                                                   {lastMessages[atendimento.id].attachmentCount}
+                                                 </Badge>
+                                               )}
+                                             </div>
+                                             {!clientPresence[atendimento.id]?.isTyping && !clientPresence[atendimento.id]?.isOnline && clientPresence[atendimento.id]?.lastSeenAt && (
+                                               <span className="text-[9px] text-muted-foreground whitespace-nowrap">
+                                                 visto {(() => {
+                                                   const lastSeen = new Date(clientPresence[atendimento.id].lastSeenAt!);
+                                                   const diffInSeconds = Math.floor((now - lastSeen.getTime()) / 1000);
+                                                   
+                                                   if (diffInSeconds < 60) return 'agora';
+                                                   if (diffInSeconds < 3600) return `há ${Math.floor(diffInSeconds / 60)}m`;
+                                                   if (diffInSeconds < 86400) return `há ${Math.floor(diffInSeconds / 3600)}h`;
+                                                   return `há ${Math.floor(diffInSeconds / 86400)}d`;
+                                                 })()}
+                                               </span>
+                                             )}
                                          </div>
                                        </button>
                                      );
