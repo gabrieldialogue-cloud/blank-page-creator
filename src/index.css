@@ -6,6 +6,11 @@
 All colors MUST be HSL.
 */
 
+/* Vertical text for collapsed columns */
+.writing-mode-vertical-rl {
+  writing-mode: vertical-rl;
+}
+
 /* Audio player custom styling */
 .audio-player-styled::-webkit-media-controls-panel {
   background: hsl(var(--background));
