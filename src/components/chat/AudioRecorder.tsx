@@ -29,31 +29,24 @@ export function AudioRecorder({ onAudioRecorded, disabled }: AudioRecorderProps)
         } 
       });
 
-      // Tentar usar OGG primeiro, fallback para WebM com conversão posterior
-      let mimeType = 'audio/ogg;codecs=opus';
-      let needsConversion = false;
+      // Tentar usar apenas OGG/Opus. Se não suportar, bloquear o recurso.
+      const mimeType = 'audio/ogg;codecs=opus';
       
       if (!MediaRecorder.isTypeSupported(mimeType)) {
-        console.warn('OGG format not supported, using WebM with conversion');
-        mimeType = 'audio/webm;codecs=opus';
-        needsConversion = true;
-        
-        if (!MediaRecorder.isTypeSupported(mimeType)) {
-          console.error('Neither OGG nor WebM formats are supported');
-          toast({
-            title: 'Gravação de áudio não suportada',
-            description: 'Seu navegador não suporta os formatos de áudio necessários.',
-            variant: 'destructive',
-          });
-          stream.getTracks().forEach(track => track.stop());
-          return;
-        }
+        console.warn('OGG/Opus não suportado neste navegador. Bloqueando gravação para evitar falha no WhatsApp.');
+        toast({
+          title: 'Gravação de áudio não suportada',
+          description: 'Seu navegador não suporta o formato de áudio exigido pelo WhatsApp (OGG/Opus). Use outro navegador ou envie texto.',
+          variant: 'destructive',
+        });
+        stream.getTracks().forEach(track => track.stop());
+        return;
       }
 
-      console.log('Recording with mime type:', mimeType, needsConversion ? '(will convert)' : '(native)');
+      console.log('Recording with mime type:', mimeType, '(native OGG/Opus)');
 
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: mimeType,
+        mimeType,
       });
 
       mediaRecorderRef.current = mediaRecorder;
