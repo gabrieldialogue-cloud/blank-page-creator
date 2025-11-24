@@ -105,14 +105,14 @@ export function useRealtimeMessages({
         setHasMoreMessages((count || 0) > 10);
         setOldestMessageDate(sortedData.length > 0 ? sortedData[0].created_at : null);
         
-        // NÃO marcar como lidas automaticamente - será feito manualmente via clearUnreadCount
+        // NÃO marcar como lidas automaticamente aqui
       }
     } catch (error) {
       console.error('❌ Erro ao buscar mensagens:', error);
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [vendedorId]);
+  }, []);
 
   // Carregar mensagens antigas
   const loadMoreMessages = useCallback(async () => {
