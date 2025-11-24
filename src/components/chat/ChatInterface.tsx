@@ -173,27 +173,27 @@ export function ChatInterface({
 
           {/* Input */}
           <div className="border-t border-border bg-card p-4">
-            <div className="flex gap-2">
-              <AudioRecorder 
-                onAudioRecorded={handleAudioRecorded}
-                disabled={isSending}
-              />
+            <div className="flex gap-2 items-end">
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Digite sua mensagem..."
-                className="min-h-[80px] resize-none"
+                className="min-h-[80px] resize-none flex-1"
                 disabled={isSending}
               />
               <Button
                 onClick={handleSend}
                 disabled={!message.trim() || isSending}
                 size="icon"
-                className="h-[80px] w-12 bg-success hover:bg-success/90"
+                className="h-[80px] w-12 bg-success hover:bg-success/90 shrink-0"
               >
                 <Send className="h-5 w-5" />
               </Button>
+              <AudioRecorder 
+                onAudioRecorded={handleAudioRecorded}
+                disabled={isSending}
+              />
             </div>
           </div>
         </div>

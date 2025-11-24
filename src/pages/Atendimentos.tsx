@@ -1899,17 +1899,13 @@ export default function Atendimentos() {
                                       </div>
                                     )}
                                     
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 items-end">
                                       <Input
                                         ref={fileInputRef}
                                         type="file"
                                         accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.txt,.csv"
                                         onChange={handleFileSelect}
                                         className="hidden"
-                                      />
-                                      <AudioRecorder 
-                                        onAudioRecorded={handleAudioRecorded}
-                                        disabled={isSending || isUploading}
                                       />
                                       <Button
                                         variant="outline"
@@ -1926,14 +1922,14 @@ export default function Atendimentos() {
                                         onChange={handleInputChange}
                                         onKeyPress={handleKeyPress}
                                         placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
-                                        className="min-h-[60px] max-h-[120px] resize-none"
+                                        className="min-h-[60px] max-h-[120px] resize-none flex-1"
                                         disabled={isSending || isUploading}
                                       />
                                       <Button
                                         onClick={selectedFile ? handleSendWithFile : handleSendMessage}
                                         disabled={(!messageInput.trim() && !selectedFile) || isSending || isUploading}
                                         size="icon"
-                                        className="h-[60px] w-[60px] shrink-0"
+                                        className="h-[60px] w-[60px] shrink-0 bg-success hover:bg-success/90"
                                       >
                                         {(isSending || isUploading) ? (
                                           <Loader2 className="h-5 w-5 animate-spin" />
@@ -1941,6 +1937,10 @@ export default function Atendimentos() {
                                           <Send className="h-5 w-5" />
                                         )}
                                       </Button>
+                                      <AudioRecorder 
+                                        onAudioRecorded={handleAudioRecorded}
+                                        disabled={isSending || isUploading}
+                                      />
                                     </div>
                                   </div>
                                 )}
