@@ -736,7 +736,13 @@ export default function SupervisorAtendimentos() {
                             </div>
                           ) : (
                             <div className="space-y-1.5 px-2 py-2">
-                              {atendimentosDoVendedor.map((atendimento) => {
+                              {atendimentosDoVendedor
+                                .sort((a, b) => {
+                                  const lastMsgA = a.mensagens[a.mensagens.length - 1]?.created_at || a.created_at;
+                                  const lastMsgB = b.mensagens[b.mensagens.length - 1]?.created_at || b.created_at;
+                                  return new Date(lastMsgB).getTime() - new Date(lastMsgA).getTime();
+                                })
+                                .map((atendimento) => {
                                 const unreadCount = getUnreadCountForAtendimento(atendimento);
                                 return (
                            <button
@@ -744,12 +750,12 @@ export default function SupervisorAtendimentos() {
                                     onClick={() => setSelectedAtendimento(atendimento)}
                                     className={`w-full text-left px-3 py-3 rounded-xl transition-all duration-300 relative overflow-hidden ${
                                       selectedAtendimento?.id === atendimento.id 
-                                        ? 'bg-gradient-to-r from-primary/20 to-primary/10 border-2 border-primary shadow-md' 
-                                        : 'bg-gradient-to-r from-muted/30 to-transparent border border-border hover:border-primary/50 hover:shadow-sm'
+                                        ? 'bg-gradient-to-b from-orange-500/20 via-orange-400/10 to-transparent border-2 border-primary shadow-md' 
+                                        : 'bg-gradient-to-b from-orange-500/10 via-orange-400/5 to-transparent border border-border hover:border-primary/50 hover:shadow-sm'
                                     }`}
                                   >
                                     {unreadCount > 0 && (
-                                      <div className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs font-bold animate-pulse shadow-lg shadow-red-500/50 z-10">
+                                      <div className="absolute top-1/2 -translate-y-1/2 -right-1 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs font-bold animate-pulse shadow-lg shadow-red-500/50 z-10">
                                         {unreadCount}
                                       </div>
                                     )}
