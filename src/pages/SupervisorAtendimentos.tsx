@@ -77,11 +77,22 @@ export default function SupervisorAtendimentos() {
         }
       } else {
         // Fechando uma coluna
-        // Verifica se não é a última coluna aberta
-        const openColumns = Object.entries(newState).filter(([_, value]) => !value).length;
+        // Conta quantas colunas estarão abertas após fechar esta
+        let willBeOpenCount = 0;
+        for (let i = 0; i < hierarchy.length; i++) {
+          if (i < currentIndex) {
+            willBeOpenCount++; // Colunas à direita permanecerão abertas
+          } else if (i === currentIndex) {
+            // Esta coluna será fechada
+          } else {
+            if (!prev[hierarchy[i]]) {
+              willBeOpenCount++; // Colunas já abertas à esquerda
+            }
+          }
+        }
         
-        if (openColumns <= 1) {
-          // Não permite fechar se é a única coluna aberta
+        // Não permite fechar se ficaria sem nenhuma coluna aberta
+        if (willBeOpenCount === 0) {
           return prev;
         }
         
