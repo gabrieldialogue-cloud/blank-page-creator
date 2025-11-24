@@ -719,16 +719,16 @@ export default function SupervisorAtendimentos() {
                       </p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-0 h-[calc(100vh-180px)]">
+                    <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-0" style={{ height: 'calc(100vh - 280px)' }}>
                       {/* Lista de Conversas */}
-                      <div className="border-r bg-gradient-to-b from-muted/20 to-transparent">
-                        <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-transparent">
+                      <div className="border-r bg-gradient-to-b from-muted/20 to-transparent h-full flex flex-col">
+                        <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-transparent shrink-0">
                           <h3 className="text-sm font-bold flex items-center gap-2 text-foreground">
                             <MessageSquare className="h-4 w-4 text-primary" />
                             Conversas ({atendimentosDoVendedor.length})
                           </h3>
                         </div>
-                        <ScrollArea className="h-[calc(100vh-240px)]">
+                        <ScrollArea className="flex-1">
                           {atendimentosDoVendedor.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-full px-3 py-8 text-muted-foreground">
                               <MessageSquare className="h-8 w-8 mb-2 opacity-50" />
@@ -801,7 +801,7 @@ export default function SupervisorAtendimentos() {
                       </div>
 
                       {/* Área de Chat */}
-                      <div className="flex flex-col h-full overflow-hidden">
+                      <div className="h-full overflow-hidden">
                         {!selectedAtendimento ? (
                           <div className="flex flex-col items-center justify-center h-full">
                             <MessageSquare className="h-12 w-12 text-muted-foreground/40 mb-3" />
