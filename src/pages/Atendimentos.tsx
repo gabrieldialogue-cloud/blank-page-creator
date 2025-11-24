@@ -20,7 +20,7 @@ import { MediaGallery } from "@/components/chat/MediaGallery";
 import { Textarea } from "@/components/ui/textarea";
 import { AudioRecorder } from "@/components/chat/AudioRecorder";
 import { Button } from "@/components/ui/button";
-import { Send, Paperclip, X, Image as ImageIcon, File, Images, Check, CheckCheck } from "lucide-react";
+import { Send, Paperclip, X, Image as ImageIcon, File, Images, Check, CheckCheck, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { compressImage, shouldCompress } from "@/lib/imageCompression";
@@ -72,6 +72,7 @@ export default function Atendimentos() {
   const [scrollActiveChat, setScrollActiveChat] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [suppressAutoScroll, setSuppressAutoScroll] = useState(false);
+  const [isGeneratingSuggestion, setIsGeneratingSuggestion] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -901,6 +902,55 @@ export default function Atendimentos() {
       setTimeout(() => {
         messageInputRef.current?.focus();
       }, 50);
+    }
+  };
+
+  // Generate AI response suggestion based on last client message
+  const handleGenerateSuggestion = async () => {
+    if (!selectedAtendimentoIdVendedor || isGeneratingSuggestion) return;
+
+    try {
+      setIsGeneratingSuggestion(true);
+
+      // Get last 5 messages for context
+      const recentMessages = mensagensVendedor.slice(-5).map(msg => ({
+        role: msg.remetente_tipo === 'cliente' ? 'user' : 'assistant',
+        content: msg.conteudo
+      }));
+
+      // Get the very last client message
+      const lastClientMessage = [...mensagensVendedor].reverse().find(
+        msg => msg.remetente_tipo === 'cliente'
+      );
+
+      if (!lastClientMessage) {
+        toast.error("Nenhuma mensagem do cliente encontrada");
+        return;
+      }
+
+      console.log('🤖 Gerando sugestão de resposta...');
+      const { data, error } = await supabase.functions.invoke('generate-response-suggestion', {
+        body: {
+          clientMessage: lastClientMessage.conteudo,
+          conversationContext: recentMessages.slice(0, -1) // Exclude the last message since we're passing it separately
+        }
+      });
+
+      if (error) {
+        console.error('Erro ao gerar sugestão:', error);
+        throw error;
+      }
+
+      if (data?.suggestedResponse) {
+        setMessageInput(data.suggestedResponse);
+        messageInputRef.current?.focus();
+        toast.success("Sugestão gerada! Revise antes de enviar.");
+      }
+    } catch (error) {
+      console.error('Erro ao gerar sugestão:', error);
+      toast.error("Erro ao gerar sugestão de resposta");
+    } finally {
+      setIsGeneratingSuggestion(false);
     }
   };
 
@@ -1980,6 +2030,20 @@ export default function Atendimentos() {
                                           className="min-h-[60px] max-h-[120px] resize-none flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
                                           disabled={isSending || isUploading}
                                         />
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={handleGenerateSuggestion}
+                                          disabled={isGeneratingSuggestion || isSending || isUploading || mensagensVendedor.length === 0}
+                                          className="h-14 w-14 rounded-2xl hover:bg-purple-500/10 transition-all duration-300 hover:scale-105 shrink-0 group"
+                                          title="Gerar sugestão de resposta com IA"
+                                        >
+                                          {isGeneratingSuggestion ? (
+                                            <Loader2 className="h-5 w-5 text-purple-500 animate-spin" />
+                                          ) : (
+                                            <Sparkles className="h-5 w-5 text-purple-500 group-hover:text-purple-600 transition-colors" />
+                                          )}
+                                        </Button>
                                         <Button
                                           onClick={selectedFile ? handleSendWithFile : handleSendMessage}
                                           disabled={(!messageInput.trim() && !selectedFile) || isSending || isUploading}
