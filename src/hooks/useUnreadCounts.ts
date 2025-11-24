@@ -26,6 +26,12 @@ export function useUnreadCounts({ atendimentos, vendedorId, enabled, currentAten
         continue;
       }
       
+      // NÃO mostrar contador para o atendimento que está sendo visualizado
+      if (atendimento.id === currentAtendimentoId) {
+        console.log('⏭️ Pulando atendimento atual (visualizando):', atendimento.id);
+        continue;
+      }
+      
       const { count } = await supabase
         .from('mensagens')
         .select('*', { count: 'exact', head: true })
@@ -41,10 +47,10 @@ export function useUnreadCounts({ atendimentos, vendedorId, enabled, currentAten
     setUnreadCounts(counts);
   };
 
-  // Initial fetch - apenas uma vez
+  // Initial fetch e re-fetch quando currentAtendimentoId mudar
   useEffect(() => {
-    if (!hasInitializedRef.current && enabled && vendedorId) {
-      console.log('🔄 Initial fetch de unread counts');
+    if (enabled && vendedorId) {
+      console.log('🔄 Fetch de unread counts (atendimento atual mudou):', currentAtendimentoId);
       fetchUnreadCounts();
       hasInitializedRef.current = true;
     }
@@ -68,14 +74,7 @@ export function useUnreadCounts({ atendimentos, vendedorId, enabled, currentAten
           // Apenas buscar novamente se for mensagem de cliente/IA
           if (payload.new && 
               (payload.new.remetente_tipo === 'cliente' || payload.new.remetente_tipo === 'ia')) {
-            const atendimentoId = payload.new.atendimento_id;
-            
-            // NÃO marcar como não lida se estiver visualizando esse atendimento
-            if (atendimentoId === currentAtendimentoId) {
-              console.log('⏭️ Mensagem recebida do atendimento atual, não marcar como não lida');
-              return;
-            }
-            
+            // Sempre buscar novamente - a lógica de ignorar o atendimento atual está no fetchUnreadCounts
             fetchUnreadCounts();
           }
         }
@@ -116,14 +115,11 @@ export function useUnreadCounts({ atendimentos, vendedorId, enabled, currentAten
               (payload.new.remetente_tipo === 'cliente' || payload.new.remetente_tipo === 'ia')) {
             const atendimentoId = payload.new.atendimento_id;
             
-            // NÃO resetar cleared se estiver visualizando esse atendimento
-            if (atendimentoId === currentAtendimentoId) {
-              console.log('⏭️ Nova mensagem do atendimento atual, não resetar cleared');
-              return;
+            // Apenas resetar cleared se NÃO for o atendimento atual
+            if (atendimentoId !== currentAtendimentoId) {
+              console.log('🔄 Nova mensagem de cliente/IA, removendo flag de cleared para:', atendimentoId);
+              clearedAtendimentosRef.current.delete(atendimentoId);
             }
-            
-            console.log('🔄 Nova mensagem de cliente/IA, removendo flag de cleared para:', atendimentoId);
-            clearedAtendimentosRef.current.delete(atendimentoId);
           }
         }
       )
