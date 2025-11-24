@@ -1398,10 +1398,10 @@ export default function Atendimentos() {
                                               clearUnreadCount(atendimento.id);
                                               markMessagesAsRead(atendimento.id);
                                             }}
-                                            className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-200 hover:scale-[1.01] bg-gradient-to-b from-accent/15 to-transparent ${
+                                            className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-200 hover:scale-[1.01] bg-gradient-to-b from-accent/8 to-transparent ${
                                               selectedAtendimentoIdVendedor === atendimento.id 
-                                                ? 'border border-primary/50 shadow-sm' 
-                                                : 'border border-border hover:border-primary/30 hover:shadow-sm'
+                                                ? 'border-2 border-primary/50 shadow-sm' 
+                                                : 'border-2 border-border hover:border-primary/30 hover:shadow-sm'
                                             }`}
                                           >
                                             <div className="flex items-start justify-between mb-1.5">
@@ -1595,51 +1595,29 @@ export default function Atendimentos() {
                                 >
                                   {/* Textura de fundo aplicada diretamente abaixo das mensagens */}
                                   <div 
-                                    className="h-full w-full rounded-xl bg-card/95 backdrop-blur-sm p-3"
-                                    style={{
+                                    className="h-full w-full bg-card/95 backdrop-blur-sm p-3"
+                                    style={selectedAtendimentoIdVendedor ? {
                                       backgroundImage:
                                         "linear-gradient(to right, hsl(var(--muted)/0.25) 1px, transparent 1px)," +
                                         "linear-gradient(to bottom, hsl(var(--muted)/0.25) 1px, transparent 1px)," +
                                         "radial-gradient(circle at 20% 20%, hsl(var(--primary)/0.20) 0, transparent 55%)," +
                                         "radial-gradient(circle at 80% 80%, hsl(var(--accent)/0.20) 0, transparent 55%)",
                                       backgroundSize: "18px 18px, 18px 18px, 100% 100%, 100% 100%",
-                                    }}
+                                    } : undefined}
                                   >
                                     <div className="h-full w-full px-2 py-3">
                                         {!selectedAtendimentoIdVendedor ? (
-                                          <div className="flex flex-col items-center justify-center h-full text-muted-foreground bg-card rounded-xl p-6">
+                                          <div className="flex flex-col items-center justify-center h-full text-muted-foreground bg-card p-6">
                                             <MessageSquare className="h-12 w-12 mb-4 opacity-50" />
                                             <p>Selecione um atendimento para ver as mensagens</p>
                                           </div>
                                         ) : mensagensVendedor.length === 0 ? (
-                                          <div 
-                                            className="h-full w-full rounded-xl bg-card/95 backdrop-blur-sm p-3"
-                                            style={{
-                                              backgroundImage:
-                                                "linear-gradient(to right, hsl(var(--muted)/0.25) 1px, transparent 1px)," +
-                                                "linear-gradient(to bottom, hsl(var(--muted)/0.25) 1px, transparent 1px)," +
-                                                "radial-gradient(circle at 20% 20%, hsl(var(--primary)/0.20) 0, transparent 55%)," +
-                                                "radial-gradient(circle at 80% 80%, hsl(var(--accent)/0.20) 0, transparent 55%)",
-                                              backgroundSize: "18px 18px, 18px 18px, 100% 100%, 100% 100%",
-                                            }}
-                                          >
-                                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                                              <Bot className="h-12 w-12 mb-4 opacity-50" />
-                                              <p>Nenhuma mensagem ainda</p>
-                                            </div>
+                                          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                                            <Bot className="h-12 w-12 mb-4 opacity-50" />
+                                            <p>Nenhuma mensagem ainda</p>
                                           </div>
                                           ) : (
-                                            <div 
-                                              className="h-full w-full rounded-xl bg-card/95 backdrop-blur-sm p-3"
-                                              style={{
-                                                backgroundImage:
-                                                  "linear-gradient(to right, hsl(var(--muted)/0.25) 1px, transparent 1px)," +
-                                                  "linear-gradient(to bottom, hsl(var(--muted)/0.25) 1px, transparent 1px)," +
-                                                  "radial-gradient(circle at 20% 20%, hsl(var(--primary)/0.20) 0, transparent 55%)," +
-                                                  "radial-gradient(circle at 80% 80%, hsl(var(--accent)/0.20) 0, transparent 55%)",
-                                                backgroundSize: "18px 18px, 18px 18px, 100% 100%, 100% 100%",
-                                              }}
-                                            >
+                                            <div className="h-full w-full">
                                             <div className="space-y-4">
                                               {/* Botão para carregar mensagens antigas */}
                                               {hasMoreMessages && (
