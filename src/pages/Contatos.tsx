@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ClientAvatar } from "@/components/ui/client-avatar";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Phone, Mail, Car, MessageSquare, Calendar, User, Edit, History, Filter } from "lucide-react";
@@ -288,11 +289,11 @@ export default function Contatos() {
                 <Card key={cliente.id} className="hover:border-primary/50 transition-colors">
                   <CardHeader>
                     <div className="flex items-start gap-4">
-                      <Avatar className="h-12 w-12">
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          {getInitials(cliente.nome)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <ClientAvatar
+                        name={cliente.nome}
+                        imageUrl={null}
+                        className="h-12 w-12"
+                      />
                       <div className="flex-1">
                         <CardTitle className="text-lg mb-1">{cliente.nome}</CardTitle>
                         <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
