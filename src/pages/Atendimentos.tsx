@@ -529,25 +529,24 @@ export default function Atendimentos() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Auto scroll to bottom quando um novo atendimento é selecionado (não ao carregar mais mensagens)
+  // Auto scroll to bottom quando um novo atendimento é selecionado
   useEffect(() => {
     if (
       !isSupervisor &&
       selectedAtendimentoIdVendedor &&
-      mensagensVendedor.length > 0 &&
       prevSelectedAtendimentoId.current !== selectedAtendimentoIdVendedor
     ) {
+      // Atualiza a referência primeiro
       prevSelectedAtendimentoId.current = selectedAtendimentoIdVendedor;
-      // Forçar scroll para o final imediatamente quando selecionar um card
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
-          });
-        });
-      });
+      
+      // Forçar scroll para o final após o DOM atualizar
+      setTimeout(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'instant', block: 'end' });
+        }
+      }, 100);
     }
-  }, [selectedAtendimentoIdVendedor, mensagensVendedor.length, isSupervisor]);
+  }, [selectedAtendimentoIdVendedor, isSupervisor]);
 
   // Also scroll when new message arrives (exceto ao carregar mensagens antigas ou quando suprimido)
   useEffect(() => {
@@ -1689,11 +1688,11 @@ export default function Atendimentos() {
                                                />
                                                <div className="flex-1 min-w-0 space-y-1">
                                                    <div className="flex items-center gap-1">
-                                                     <span className="font-semibold text-[11px] block truncate">
+                                                     <span className="font-semibold text-xs block truncate">
                                                        {atendimento.clientes?.push_name || atendimento.clientes?.nome || "Cliente"}
                                                      </span>
                                                      {clientPresence[atendimento.id]?.isTyping && (
-                                                       <span className="text-[8px] text-success font-medium flex items-center gap-0.5 shrink-0">
+                                                       <span className="text-[9px] text-success font-medium flex items-center gap-0.5 shrink-0">
                                                          <span className="inline-block h-1 w-1 rounded-full bg-success animate-pulse" />
                                                          digitando
                                                        </span>
@@ -1709,26 +1708,26 @@ export default function Atendimentos() {
                                                          navigator.clipboard.writeText(atendimento.clientes.telefone);
                                                          toast.success("Número copiado!");
                                                        }}
-                                                       className="flex items-center gap-0.5 text-[9px] text-muted-foreground hover:text-foreground transition-colors max-w-full"
+                                                       className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors max-w-full"
                                                        title="Copiar número"
                                                      >
-                                                       <Phone className="h-2 w-2 shrink-0" />
+                                                       <Phone className="h-2.5 w-2.5 shrink-0" />
                                                        <span className="truncate">{atendimento.clientes.telefone}</span>
-                                                       <Copy className="h-1.5 w-1.5 shrink-0" />
+                                                       <Copy className="h-2 w-2 shrink-0" />
                                                      </button>
                                                    )}
                                                   {lastMessages[atendimento.id] ? (
                                                     <div className="flex items-start gap-0.5 mt-1">
                                                       {lastMessages[atendimento.id].attachmentType && (
                                                         lastMessages[atendimento.id].attachmentType === 'image' ? (
-                                                          <ImageIcon className="h-2 w-2 text-muted-foreground shrink-0 mt-0.5" />
+                                                          <ImageIcon className="h-2.5 w-2.5 text-muted-foreground shrink-0 mt-0.5" />
                                                         ) : lastMessages[atendimento.id].attachmentType === 'audio' ? (
-                                                          <Mic className="h-2 w-2 text-muted-foreground shrink-0 mt-0.5" />
+                                                          <Mic className="h-2.5 w-2.5 text-muted-foreground shrink-0 mt-0.5" />
                                                         ) : (
-                                                          <File className="h-2 w-2 text-muted-foreground shrink-0 mt-0.5" />
+                                                          <File className="h-2.5 w-2.5 text-muted-foreground shrink-0 mt-0.5" />
                                                         )
                                                       )}
-                                                      <span className="text-[9px] text-muted-foreground line-clamp-1 break-words flex-1">
+                                                      <span className="text-[10px] text-muted-foreground line-clamp-1 break-words flex-1">
                                                         {lastMessages[atendimento.id].remetenteTipo === 'vendedor' && (
                                                           <span className="font-medium">Você: </span>
                                                         )}
@@ -1738,25 +1737,25 @@ export default function Atendimentos() {
                                                             : lastMessages[atendimento.id].attachmentType === 'audio'
                                                               ? 'Áudio'
                                                               : 'Doc'
-                                                          : (lastMessages[atendimento.id].conteudo?.substring(0, 30) || 'Msg') + 
-                                                            (lastMessages[atendimento.id].conteudo?.length > 30 ? '...' : '')}
+                                                          : (lastMessages[atendimento.id].conteudo?.substring(0, 35) || 'Msg') + 
+                                                            (lastMessages[atendimento.id].conteudo?.length > 35 ? '...' : '')}
                                                       </span>
                                                     </div>
                                                   ) : (
-                                                    <span className="text-[9px] text-muted-foreground mt-1 block">
+                                                    <span className="text-[10px] text-muted-foreground mt-1 block">
                                                       Sem mensagens
                                                     </span>
                                                   )}
                                                </div>
                                             </div>
                                              <div className="flex flex-col items-end gap-0.5 shrink-0 ml-1">
-                                               <div className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
+                                               <div className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
                                                  {unreadCountsVendedor[atendimento.id] > 0 && (
-                                                   <Badge variant="destructive" className="text-[8px] px-0.5 py-0 h-3.5 min-w-[14px]">
+                                                   <Badge variant="destructive" className="text-[9px] px-0.5 py-0 h-4 min-w-[16px]">
                                                      {unreadCountsVendedor[atendimento.id]}
                                                    </Badge>
                                                  )}
-                                                 <span className="whitespace-nowrap text-[9px]">
+                                                 <span className="whitespace-nowrap text-[10px]">
                                                    {format(new Date(lastMessages[atendimento.id]?.createdAt || atendimento.created_at), "dd/MM HH:mm", { locale: ptBR })}
                                                  </span>
                                                </div>
@@ -1774,20 +1773,20 @@ export default function Atendimentos() {
                                             </div>
                                           </div>
                                            <div className="flex items-center justify-between gap-1.5">
-                                             <p className="text-[9px] text-muted-foreground truncate flex-1 min-w-0">
+                                             <p className="text-[10px] text-muted-foreground truncate flex-1 min-w-0">
                                                {atendimento.marca_veiculo} {atendimento.modelo_veiculo}
                                              </p>
                                              <div className="flex items-center gap-0.5 shrink-0">
                                                {getStatusBadge(atendimento.status)}
                                                {lastMessages[atendimento.id]?.attachmentCount > 0 && (
-                                                 <Badge variant="outline" className="text-[8px] gap-0.5 px-0.5 py-0 h-3.5">
-                                                   <Paperclip className="h-2 w-2" />
+                                                 <Badge variant="outline" className="text-[9px] gap-0.5 px-0.5 py-0 h-4">
+                                                   <Paperclip className="h-2.5 w-2.5" />
                                                    {lastMessages[atendimento.id].attachmentCount}
                                                  </Badge>
                                                )}
                                              </div>
                                              {!clientPresence[atendimento.id]?.isTyping && !clientPresence[atendimento.id]?.isOnline && clientPresence[atendimento.id]?.lastSeenAt && (
-                                               <span className="text-[8px] text-muted-foreground whitespace-nowrap">
+                                               <span className="text-[9px] text-muted-foreground whitespace-nowrap">
                                                  visto {(() => {
                                                    const lastSeen = new Date(clientPresence[atendimento.id].lastSeenAt!);
                                                    const diffInSeconds = Math.floor((now - lastSeen.getTime()) / 1000);
