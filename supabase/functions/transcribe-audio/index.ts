@@ -61,7 +61,9 @@ serve(async (req) => {
     const blob = new Blob([binaryAudio], { type: 'audio/webm' });
     formData.append('file', blob, 'audio.webm');
     formData.append('model', 'whisper-1');
-    formData.append('language', 'pt');
+    formData.append('language', 'pt'); // Portuguese for better accuracy
+    formData.append('temperature', '0'); // More deterministic transcription for higher quality
+    formData.append('response_format', 'verbose_json'); // Get detailed response with timestamps
 
     // Send to OpenAI Whisper
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
