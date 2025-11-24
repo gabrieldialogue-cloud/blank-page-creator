@@ -655,6 +655,10 @@ export function AtendimentoChatModal({
 
             <div className="border-t border-border/40 bg-gradient-to-br from-background to-muted/20 p-6 shadow-[inset_0_8px_12px_-8px_rgba(0,0,0,0.1)] shrink-0">
               <div className="flex gap-3 items-end bg-card/60 backdrop-blur-sm p-3 rounded-3xl shadow-lg border border-border/50">
+                <FileUpload 
+                  onFileSelected={handleFileSelected}
+                  disabled={isSending}
+                />
                 <Textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
@@ -664,10 +668,6 @@ export function AtendimentoChatModal({
                   disabled={isSending}
                 />
                 <div className="flex gap-2 relative">
-                  <FileUpload 
-                    onFileSelected={handleFileSelected}
-                    disabled={isSending}
-                  />
                   <AudioRecorder 
                     onAudioRecorded={handleAudioRecorded}
                     disabled={isSending}
@@ -690,9 +690,9 @@ export function AtendimentoChatModal({
                       onClick={handleSend}
                       disabled={!message.trim() || isSending}
                       size="icon"
-                      className="h-14 w-14 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 transition-all duration-300 hover:scale-105 shrink-0 disabled:opacity-50 disabled:hover:scale-100"
+                      className="h-12 w-12 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 transition-all duration-300 hover:scale-105 shrink-0 disabled:opacity-50 disabled:hover:scale-100"
                     >
-                      <Send className="h-5 w-5 text-white" />
+                      <Send className="h-4 w-4 text-white" />
                     </Button>
                   </div>
                 </div>
@@ -818,6 +818,10 @@ export function AtendimentoChatModal({
 
               <div className="border-t border-border/40 bg-gradient-to-br from-background to-muted/20 p-6 shadow-[inset_0_8px_12px_-8px_rgba(0,0,0,0.1)] shrink-0">
                 <div className="flex gap-3 items-end bg-card/60 backdrop-blur-sm p-3 rounded-3xl shadow-lg border border-border/50">
+                  <FileUpload 
+                    onFileSelected={handleFileSelected}
+                    disabled={isSending}
+                  />
                   <Textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
@@ -827,10 +831,6 @@ export function AtendimentoChatModal({
                     disabled={isSending}
                   />
                   <div className="flex gap-2 relative">
-                    <FileUpload 
-                      onFileSelected={handleFileSelected}
-                      disabled={isSending}
-                    />
                     <AudioRecorder 
                       onAudioRecorded={handleAudioRecorded}
                       disabled={isSending}
@@ -853,9 +853,9 @@ export function AtendimentoChatModal({
                         onClick={handleSend}
                         disabled={!message.trim() || isSending}
                         size="icon"
-                        className="h-14 w-14 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 transition-all duration-300 hover:scale-105 shrink-0 disabled:opacity-50 disabled:hover:scale-100"
+                        className="h-12 w-12 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 transition-all duration-300 hover:scale-105 shrink-0 disabled:opacity-50 disabled:hover:scale-100"
                       >
-                        <Send className="h-5 w-5 text-white" />
+                        <Send className="h-4 w-4 text-white" />
                       </Button>
                     </div>
                   </div>
