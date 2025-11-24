@@ -57,30 +57,80 @@ serve(async (req) => {
         if (messageId) {
           // Update based on status type
           if (statusValue === 'delivered') {
-            const { error: updateError } = await supabase
+            const { data: mensagem, error: updateError } = await supabase
               .from('mensagens')
               .update({
                 delivered_at: ts,
               })
-              .eq('whatsapp_message_id', messageId);
+              .eq('whatsapp_message_id', messageId)
+              .select('atendimento_id')
+              .single();
 
             if (updateError) {
               console.error('Error updating delivered_at from WhatsApp:', updateError);
             } else {
               console.log(`Updated delivered_at for mensagem with whatsapp_message_id=${messageId}`);
+              
+              // Broadcast client online status when we receive delivered status
+              if (mensagem?.atendimento_id) {
+                try {
+                  const channel = supabase.channel('global-client-presence');
+                  await channel.subscribe();
+                  
+                  await channel.send({
+                    type: 'broadcast',
+                    event: 'client_online',
+                    payload: {
+                      atendimentoId: mensagem.atendimento_id,
+                      isOnline: true,
+                      timestamp: ts
+                    }
+                  });
+                  
+                  console.log(`Broadcasted client online for atendimento ${mensagem.atendimento_id}`);
+                  await supabase.removeChannel(channel);
+                } catch (broadcastError) {
+                  console.error('Error broadcasting client online status:', broadcastError);
+                }
+              }
             }
           } else if (statusValue === 'read') {
-            const { error: updateError } = await supabase
+            const { data: mensagem, error: updateError } = await supabase
               .from('mensagens')
               .update({
                 read_at: ts,
               })
-              .eq('whatsapp_message_id', messageId);
+              .eq('whatsapp_message_id', messageId)
+              .select('atendimento_id')
+              .single();
 
             if (updateError) {
               console.error('Error updating read_at from WhatsApp:', updateError);
             } else {
               console.log(`Updated read_at for mensagem with whatsapp_message_id=${messageId}`);
+              
+              // Broadcast client online status when we receive read status
+              if (mensagem?.atendimento_id) {
+                try {
+                  const channel = supabase.channel('global-client-presence');
+                  await channel.subscribe();
+                  
+                  await channel.send({
+                    type: 'broadcast',
+                    event: 'client_online',
+                    payload: {
+                      atendimentoId: mensagem.atendimento_id,
+                      isOnline: true,
+                      timestamp: ts
+                    }
+                  });
+                  
+                  console.log(`Broadcasted client online for atendimento ${mensagem.atendimento_id}`);
+                  await supabase.removeChannel(channel);
+                } catch (broadcastError) {
+                  console.error('Error broadcasting client online status:', broadcastError);
+                }
+              }
             }
           }
         }

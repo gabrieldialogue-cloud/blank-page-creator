@@ -213,9 +213,19 @@ export function useRealtimeMessages({
         schema: 'public',
         table: 'mensagens',
         filter: `atendimento_id=eq.${atendimentoId}`
-      }, (payload) => {
+      }, async (payload) => {
         console.log('🆕 Mudança em mensagens via postgres_changes:', payload);
         console.log('⟳ Recarregando mensagens (postgres_changes)...');
+        
+        // Se for uma nova mensagem de cliente/IA e o vendedor está visualizando este chat, marcar como lida
+        if (payload.eventType === 'INSERT' && 
+            payload.new && 
+            (payload.new.remetente_tipo === 'cliente' || payload.new.remetente_tipo === 'ia') &&
+            vendedorId) {
+          console.log('📖 Nova mensagem de cliente/IA recebida, marcando como lida automaticamente...');
+          await markMessagesAsRead(atendimentoId);
+        }
+        
         fetchMessages(atendimentoId, true);
       })
       .subscribe((status) => {

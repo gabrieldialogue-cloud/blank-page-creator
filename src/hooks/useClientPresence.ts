@@ -66,44 +66,58 @@ export function useClientPresence({ atendimentos, enabled }: UseClientPresencePr
 
     updatePresenceFromActivity();
 
+    // Subscribe to global presence broadcast channel
+    const globalChannel = supabase.channel('global-client-presence');
+    
+    globalChannel
+      .on('broadcast', { event: 'client_online' }, (payload) => {
+        const atendimentoId = payload.payload.atendimentoId;
+        const isOnline = payload.payload.isOnline;
+        
+        console.log(`📡 Global broadcast client_online recebido para ${atendimentoId}:`, isOnline);
+        
+        // Verificar se este atendimento está na lista
+        const atendimento = atendimentos.find(a => a.id === atendimentoId);
+        if (!atendimento) return;
+        
+        setClientPresence(prev => ({
+          ...prev,
+          [atendimentoId]: {
+            ...prev[atendimentoId],
+            isOnline: isOnline
+          }
+        }));
+
+        // Clear existing timeout
+        if (onlineTimeouts.current[atendimentoId]) {
+          clearTimeout(onlineTimeouts.current[atendimentoId]);
+        }
+
+        // If going online, set timeout to clear after 1 minute
+        if (isOnline) {
+          onlineTimeouts.current[atendimentoId] = setTimeout(() => {
+            setClientPresence(prev => ({
+              ...prev,
+              [atendimentoId]: {
+                ...prev[atendimentoId],
+                isOnline: false
+              }
+            }));
+          }, 60 * 1000);
+        }
+      })
+      .subscribe();
+
     // Subscribe to new messages to update presence
     const channels = atendimentos.map(atendimento => {
       const channel = supabase.channel(`client-presence:${atendimento.id}`);
       
       channel
-        .on('broadcast', { event: 'client_online' }, (payload) => {
-          const atendId = atendimento.id;
-          const isOnline = payload.payload.isOnline;
-          
-          setClientPresence(prev => ({
-            ...prev,
-            [atendId]: {
-              ...prev[atendId],
-              isOnline: isOnline
-            }
-          }));
-
-          // Clear existing timeout
-          if (onlineTimeouts.current[atendId]) {
-            clearTimeout(onlineTimeouts.current[atendId]);
-          }
-
-          // If going online, set timeout to clear after 1 minute
-          if (isOnline) {
-            onlineTimeouts.current[atendId] = setTimeout(() => {
-              setClientPresence(prev => ({
-                ...prev,
-                [atendId]: {
-                  ...prev[atendId],
-                  isOnline: false
-                }
-              }));
-            }, 60 * 1000);
-          }
-        })
         .on('broadcast', { event: 'client_typing' }, (payload) => {
           const atendId = atendimento.id;
           const isTyping = payload.payload.isTyping;
+          
+          console.log(`⌨️ Recebido broadcast client_typing para ${atendId}:`, isTyping);
           
           setClientPresence(prev => ({
             ...prev,
@@ -138,6 +152,8 @@ export function useClientPresence({ atendimentos, enabled }: UseClientPresencePr
         }, (payload: any) => {
           if (payload.new.remetente_tipo === 'cliente') {
             const atendId = atendimento.id;
+            
+            console.log(`📨 Nova mensagem de cliente para ${atendId}, marcando como online`);
             
             // Cliente enviou mensagem, está online
             setClientPresence(prev => ({
@@ -182,6 +198,9 @@ export function useClientPresence({ atendimentos, enabled }: UseClientPresencePr
       Object.values(typingTimeouts.current).forEach(timeout => clearTimeout(timeout));
       onlineTimeouts.current = {};
       typingTimeouts.current = {};
+      
+      // Remove global channel
+      supabase.removeChannel(globalChannel);
       
       channels.forEach(channel => {
         supabase.removeChannel(channel);
