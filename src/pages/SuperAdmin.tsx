@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ResetUsersButton } from "@/components/ResetUsersButton";
+import { EvolutionInstanceManager } from "@/components/superadmin/EvolutionInstanceManager";
 
 const ADMIN_EMAIL = "gabriel.dialogue@gmail.com";
 const ADMIN_PASSWORD = "0409L@ve";
@@ -1305,116 +1306,13 @@ export default function SuperAdmin() {
                   )}
                 </div>
 
-                {/* Create Instance for Vendedor */}
-                <div className="space-y-4 rounded-lg border border-purple-500/30 bg-purple-500/5 p-4">
-                  <h3 className="font-semibold text-foreground flex items-center gap-2">
-                    <UserPlus className="h-4 w-4 text-purple-500" />
-                    Conectar WhatsApp do Vendedor
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Crie uma instância na Evolution API para conectar o WhatsApp pessoal de um vendedor.
-                  </p>
-                  
-                  <Separator />
-                  
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="select-vendedor-whatsapp">Vendedor</Label>
-                      <Select value={selectedVendedorForWhatsApp} onValueChange={setSelectedVendedorForWhatsApp}>
-                        <SelectTrigger id="select-vendedor-whatsapp">
-                          <SelectValue placeholder="Selecione um vendedor" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {vendedores.map((vend) => (
-                            <SelectItem key={vend.id} value={vend.id}>
-                              {vend.nome} ({vend.email})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="vendedor-instance-name">Nome da Instância</Label>
-                      <Input
-                        id="vendedor-instance-name"
-                        placeholder="vendedor_joao"
-                        value={vendedorInstanceName}
-                        onChange={(e) => setVendedorInstanceName(e.target.value)}
-                      />
-                      <p className="text-xs text-muted-foreground">Identificador único na Evolution API</p>
-                    </div>
-
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="vendedor-whatsapp-number">Número do WhatsApp</Label>
-                      <Input
-                        id="vendedor-whatsapp-number"
-                        placeholder="5511999999999"
-                        value={vendedorWhatsAppNumber}
-                        onChange={(e) => setVendedorWhatsAppNumber(e.target.value)}
-                      />
-                      <p className="text-xs text-muted-foreground">Número completo com código do país (sem + ou espaços)</p>
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={createEvolutionInstance}
-                    className="w-full bg-purple-500 hover:bg-purple-600"
-                    disabled={creatingInstance || !selectedVendedorForWhatsApp || !vendedorInstanceName || !evolutionApiUrl || !evolutionApiKey}
-                  >
-                    {creatingInstance ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Criando Instância...
-                      </>
-                    ) : (
-                      <>
-                        <Smartphone className="mr-2 h-4 w-4" />
-                        Criar Instância e Gerar QR Code
-                      </>
-                    )}
-                  </Button>
-
-                  {qrCodeData && (
-                    <div className="p-4 rounded-lg bg-background border border-border text-center">
-                      <p className="text-sm font-medium mb-3">Escaneie o QR Code com o WhatsApp:</p>
-                      <img 
-                        src={qrCodeData.startsWith('data:') ? qrCodeData : `data:image/png;base64,${qrCodeData}`} 
-                        alt="QR Code WhatsApp" 
-                        className="mx-auto max-w-[280px] rounded-lg"
-                      />
-                      <p className="text-xs text-muted-foreground mt-3">
-                        Abra o WhatsApp → Menu → Aparelhos conectados → Conectar aparelho
-                      </p>
-                    </div>
-                  )}
-
-                  {(!evolutionApiUrl || !evolutionApiKey) && (
-                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                      <p className="text-xs text-amber-600 dark:text-amber-400">
-                        <strong>Atenção:</strong> Configure a conexão com a Evolution API primeiro para criar instâncias.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Connected Vendedores List */}
-                <div className="space-y-4 rounded-lg border border-border p-4">
-                  <h3 className="font-semibold text-foreground flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Vendedores com WhatsApp Conectado
-                  </h3>
-                  
-                  <div className="text-center py-8 rounded-lg border border-dashed">
-                    <Smartphone className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      Nenhum vendedor com WhatsApp conectado ainda
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Configure a Evolution API e crie instâncias para os vendedores
-                    </p>
-                  </div>
-                </div>
+                {/* Evolution Instance Manager Component */}
+                <EvolutionInstanceManager
+                  evolutionApiUrl={evolutionApiUrl}
+                  evolutionApiKey={evolutionApiKey}
+                  evolutionStatus={evolutionStatus}
+                  vendedores={vendedores}
+                />
               </TabsContent>
             </Tabs>
           </CardContent>
