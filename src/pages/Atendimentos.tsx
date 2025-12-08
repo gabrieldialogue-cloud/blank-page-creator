@@ -31,6 +31,8 @@ import { useLastMessages } from "@/hooks/useLastMessages";
 import { useClientPresence } from "@/hooks/useClientPresence";
 import { ClientAvatar } from "@/components/ui/client-avatar";
 import { DeleteContactDialog } from "@/components/contatos/DeleteContactDialog";
+import { useWhatsAppWindow } from "@/hooks/useWhatsAppWindow";
+import { WhatsAppWindowAlert } from "@/components/chat/WhatsAppWindowAlert";
 
 type DetailType = 
   | "ia_respondendo"
@@ -130,6 +132,11 @@ export default function Atendimentos() {
     enabled: !isSupervisor
   });
 
+  // Verificar janela de 24h do WhatsApp
+  const { isWindowClosed, lastClientMessageAt, hoursSinceLast } = useWhatsAppWindow({
+    messages: mensagensVendedor,
+    enabled: !isSupervisor && !!selectedAtendimentoIdVendedor,
+  });
 
   useEffect(() => {
     checkSupervisorRole();
@@ -1994,97 +2001,104 @@ export default function Atendimentos() {
                                   
                                    {/* Input Area */}
                                    {selectedAtendimentoIdVendedor && (
-                                     <div className="p-4 border-t border-border/20 shadow-[inset_0_8px_12px_-8px_rgba(0,0,0,0.1)] shrink-0">
-                                       {selectedFile && (
-                                         <div className="mb-3 p-3 bg-accent/10 border border-accent/30 rounded-lg flex items-center justify-between">
-                                           <div className="flex items-center gap-2 min-w-0">
-                                             {selectedFile.type.startsWith('image/') ? (
-                                               <ImageIcon className="h-5 w-5 text-accent shrink-0" />
-                                             ) : (
-                                               <File className="h-5 w-5 text-accent shrink-0" />
-                                             )}
-                                             <span className="text-sm font-medium truncate max-w-[200px]">
-                                               {selectedFile.name}
-                                             </span>
-                                             <span className="text-xs text-muted-foreground shrink-0">
-                                               ({(selectedFile.size / 1024).toFixed(1)} KB)
-                                             </span>
+                                     isWindowClosed ? (
+                                       <WhatsAppWindowAlert 
+                                         lastClientMessageAt={lastClientMessageAt}
+                                         hoursSinceLast={hoursSinceLast}
+                                       />
+                                     ) : (
+                                       <div className="p-4 border-t border-border/20 shadow-[inset_0_8px_12px_-8px_rgba(0,0,0,0.1)] shrink-0">
+                                         {selectedFile && (
+                                           <div className="mb-3 p-3 bg-accent/10 border border-accent/30 rounded-lg flex items-center justify-between">
+                                             <div className="flex items-center gap-2 min-w-0">
+                                               {selectedFile.type.startsWith('image/') ? (
+                                                 <ImageIcon className="h-5 w-5 text-accent shrink-0" />
+                                               ) : (
+                                                 <File className="h-5 w-5 text-accent shrink-0" />
+                                               )}
+                                               <span className="text-sm font-medium truncate max-w-[200px]">
+                                                 {selectedFile.name}
+                                               </span>
+                                               <span className="text-xs text-muted-foreground shrink-0">
+                                                 ({(selectedFile.size / 1024).toFixed(1)} KB)
+                                               </span>
+                                             </div>
+                                             <Button
+                                               variant="ghost"
+                                               size="icon"
+                                               className="h-6 w-6 shrink-0"
+                                               onClick={() => {
+                                                 setSelectedFile(null);
+                                                 if (fileInputRef.current) {
+                                                   fileInputRef.current.value = "";
+                                                 }
+                                               }}
+                                             >
+                                               <X className="h-4 w-4" />
+                                             </Button>
                                            </div>
-                                           <Button
-                                             variant="ghost"
-                                             size="icon"
-                                             className="h-6 w-6 shrink-0"
-                                             onClick={() => {
-                                               setSelectedFile(null);
-                                               if (fileInputRef.current) {
-                                                 fileInputRef.current.value = "";
-                                               }
-                                             }}
-                                           >
-                                             <X className="h-4 w-4" />
-                                           </Button>
-                                         </div>
-                                       )}
-                                       
-                                       <div className="flex gap-3 items-end bg-card/60 backdrop-blur-sm p-3 rounded-3xl shadow-lg border border-border/50">
-                                        <Input
-                                          ref={fileInputRef}
-                                          type="file"
-                                          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.txt,.csv"
-                                          onChange={handleFileSelect}
-                                          className="hidden"
-                                        />
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-14 w-14 rounded-2xl hover:bg-primary/10 transition-all duration-300 hover:scale-105 shrink-0"
-                                          onClick={() => fileInputRef.current?.click()}
-                                          disabled={isUploading || isSending}
-                                        >
-                                          <Paperclip className="h-5 w-5 text-muted-foreground" />
-                                        </Button>
-                                        <Textarea
-                                          ref={messageInputRef}
-                                          value={messageInput}
-                                          onChange={handleInputChange}
-                                          onKeyPress={handleKeyPress}
-                                          placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
-                                          className="min-h-[60px] max-h-[120px] resize-none flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
-                                          disabled={isSending || isUploading}
-                                        />
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={handleGenerateSuggestion}
-                                          disabled={isGeneratingSuggestion || isSending || isUploading || mensagensVendedor.length === 0}
-                                          className="h-14 w-14 rounded-2xl hover:bg-purple-500/10 transition-all duration-300 hover:scale-105 shrink-0 group"
-                                          title="Gerar sugestão de resposta com IA"
-                                        >
-                                          {isGeneratingSuggestion ? (
-                                            <Loader2 className="h-5 w-5 text-purple-500 animate-spin" />
-                                          ) : (
-                                            <Sparkles className="h-5 w-5 text-purple-500 group-hover:text-purple-600 transition-colors" />
-                                          )}
-                                        </Button>
-                                        <Button
-                                          onClick={selectedFile ? handleSendWithFile : handleSendMessage}
-                                          disabled={(!messageInput.trim() && !selectedFile) || isSending || isUploading}
-                                          size="icon"
-                                          className="h-14 w-14 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 transition-all duration-300 hover:scale-105 shrink-0 disabled:opacity-50 disabled:hover:scale-100"
-                                        >
-                                          {(isSending || isUploading) ? (
-                                            <Loader2 className="h-5 w-5 animate-spin text-white" />
-                                          ) : (
-                                            <Send className="h-5 w-5 text-white" />
-                                          )}
-                                        </Button>
-                                        <AudioRecorder 
-                                          onAudioRecorded={handleAudioRecorded}
-                                          disabled={isSending || isUploading}
-                                        />
+                                         )}
+                                         
+                                         <div className="flex gap-3 items-end bg-card/60 backdrop-blur-sm p-3 rounded-3xl shadow-lg border border-border/50">
+                                          <Input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.txt,.csv"
+                                            onChange={handleFileSelect}
+                                            className="hidden"
+                                          />
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-14 w-14 rounded-2xl hover:bg-primary/10 transition-all duration-300 hover:scale-105 shrink-0"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={isUploading || isSending}
+                                          >
+                                            <Paperclip className="h-5 w-5 text-muted-foreground" />
+                                          </Button>
+                                          <Textarea
+                                            ref={messageInputRef}
+                                            value={messageInput}
+                                            onChange={handleInputChange}
+                                            onKeyPress={handleKeyPress}
+                                            placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
+                                            className="min-h-[60px] max-h-[120px] resize-none flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
+                                            disabled={isSending || isUploading}
+                                          />
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={handleGenerateSuggestion}
+                                            disabled={isGeneratingSuggestion || isSending || isUploading || mensagensVendedor.length === 0}
+                                            className="h-14 w-14 rounded-2xl hover:bg-purple-500/10 transition-all duration-300 hover:scale-105 shrink-0 group"
+                                            title="Gerar sugestão de resposta com IA"
+                                          >
+                                            {isGeneratingSuggestion ? (
+                                              <Loader2 className="h-5 w-5 text-purple-500 animate-spin" />
+                                            ) : (
+                                              <Sparkles className="h-5 w-5 text-purple-500 group-hover:text-purple-600 transition-colors" />
+                                            )}
+                                          </Button>
+                                          <Button
+                                            onClick={selectedFile ? handleSendWithFile : handleSendMessage}
+                                            disabled={(!messageInput.trim() && !selectedFile) || isSending || isUploading}
+                                            size="icon"
+                                            className="h-14 w-14 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 transition-all duration-300 hover:scale-105 shrink-0 disabled:opacity-50 disabled:hover:scale-100"
+                                          >
+                                            {(isSending || isUploading) ? (
+                                              <Loader2 className="h-5 w-5 animate-spin text-white" />
+                                            ) : (
+                                              <Send className="h-5 w-5 text-white" />
+                                            )}
+                                          </Button>
+                                          <AudioRecorder 
+                                            onAudioRecorded={handleAudioRecorded}
+                                            disabled={isSending || isUploading}
+                                          />
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
+                                     )
+                                   )}
                                 </div>
                               </TabsContent>
                               

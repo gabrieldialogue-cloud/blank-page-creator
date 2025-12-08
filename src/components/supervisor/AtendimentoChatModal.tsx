@@ -14,6 +14,8 @@ import { FileUpload } from "@/components/chat/FileUpload";
 import { ImagePreviewDialog } from "@/components/chat/ImagePreviewDialog";
 import { useToast } from "@/hooks/use-toast";
 import { compressImage, shouldCompress } from "@/lib/imageCompression";
+import { useWhatsAppWindow } from "@/hooks/useWhatsAppWindow";
+import { WhatsAppWindowAlert } from "@/components/chat/WhatsAppWindowAlert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,6 +76,12 @@ export function AtendimentoChatModal({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isGeneratingSuggestion, setIsGeneratingSuggestion] = useState(false);
+
+  // Verificar janela de 24h do WhatsApp
+  const { isWindowClosed, lastClientMessageAt, hoursSinceLast } = useWhatsAppWindow({
+    messages: mensagens,
+    enabled: true,
+  });
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -653,51 +661,58 @@ export function AtendimentoChatModal({
               </div>
             </ScrollArea>
 
-            <div className="border-t border-border/40 bg-gradient-to-br from-background to-muted/20 p-4 shadow-[inset_0_8px_12px_-8px_rgba(0,0,0,0.1)] shrink-0">
-              <div className="flex gap-2 items-end bg-card/60 backdrop-blur-sm p-2 rounded-3xl shadow-lg border border-border/50">
-                <FileUpload 
-                  onFileSelected={handleFileSelected}
-                  disabled={isSending}
-                />
-                <Textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Digite sua mensagem..."
-                  className="min-h-[40px] max-h-[100px] resize-none flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60 py-2.5"
-                  disabled={isSending}
-                />
-                <div className="flex gap-2 items-end relative">
-                  <AudioRecorder 
-                    onAudioRecorded={handleAudioRecorded}
+            {isWindowClosed ? (
+              <WhatsAppWindowAlert 
+                lastClientMessageAt={lastClientMessageAt}
+                hoursSinceLast={hoursSinceLast}
+              />
+            ) : (
+              <div className="border-t border-border/40 bg-gradient-to-br from-background to-muted/20 p-4 shadow-[inset_0_8px_12px_-8px_rgba(0,0,0,0.1)] shrink-0">
+                <div className="flex gap-2 items-end bg-card/60 backdrop-blur-sm p-2 rounded-3xl shadow-lg border border-border/50">
+                  <FileUpload 
+                    onFileSelected={handleFileSelected}
                     disabled={isSending}
                   />
-                  <div className="relative">
-                    <Button
-                      onClick={handleGenerateSuggestion}
-                      disabled={isGeneratingSuggestion || isSending}
-                      size="icon"
-                      className="absolute -top-10 right-0 h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg shadow-purple-500/30 transition-all duration-300 hover:scale-105 z-10 disabled:opacity-50 disabled:hover:scale-100"
-                      title="Gerar resposta com IA"
-                    >
-                      {isGeneratingSuggestion ? (
-                        <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
-                      ) : (
-                        <Sparkles className="h-3.5 w-3.5 text-white" />
-                      )}
-                    </Button>
-                    <Button
-                      onClick={handleSend}
-                      disabled={!message.trim() || isSending}
-                      size="icon"
-                      className="h-12 w-12 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 transition-all duration-300 hover:scale-105 shrink-0 disabled:opacity-50 disabled:hover:scale-100"
-                    >
-                      <Send className="h-4 w-4 text-white" />
-                    </Button>
+                  <Textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Digite sua mensagem..."
+                    className="min-h-[40px] max-h-[100px] resize-none flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60 py-2.5"
+                    disabled={isSending}
+                  />
+                  <div className="flex gap-2 items-end relative">
+                    <AudioRecorder 
+                      onAudioRecorded={handleAudioRecorded}
+                      disabled={isSending}
+                    />
+                    <div className="relative">
+                      <Button
+                        onClick={handleGenerateSuggestion}
+                        disabled={isGeneratingSuggestion || isSending}
+                        size="icon"
+                        className="absolute -top-10 right-0 h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg shadow-purple-500/30 transition-all duration-300 hover:scale-105 z-10 disabled:opacity-50 disabled:hover:scale-100"
+                        title="Gerar resposta com IA"
+                      >
+                        {isGeneratingSuggestion ? (
+                          <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3.5 w-3.5 text-white" />
+                        )}
+                      </Button>
+                      <Button
+                        onClick={handleSend}
+                        disabled={!message.trim() || isSending}
+                        size="icon"
+                        className="h-12 w-12 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 transition-all duration-300 hover:scale-105 shrink-0 disabled:opacity-50 disabled:hover:scale-100"
+                      >
+                        <Send className="h-4 w-4 text-white" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </TabsContent>
 
           <TabsContent value="media" className="flex-1 mt-0 overflow-hidden px-4">
@@ -816,51 +831,58 @@ export function AtendimentoChatModal({
                 </div>
               </ScrollArea>
 
-              <div className="border-t border-border/40 bg-gradient-to-br from-background to-muted/20 p-4 shadow-[inset_0_8px_12px_-8px_rgba(0,0,0,0.1)] shrink-0">
-                <div className="flex gap-2 items-end bg-card/60 backdrop-blur-sm p-2 rounded-3xl shadow-lg border border-border/50">
-                  <FileUpload 
-                    onFileSelected={handleFileSelected}
-                    disabled={isSending}
-                  />
-                  <Textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Digite sua mensagem..."
-                    className="min-h-[40px] max-h-[100px] resize-none flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60 py-2.5"
-                    disabled={isSending}
-                  />
-                  <div className="flex gap-2 items-end relative">
-                    <AudioRecorder 
-                      onAudioRecorded={handleAudioRecorded}
+              {isWindowClosed ? (
+                <WhatsAppWindowAlert 
+                  lastClientMessageAt={lastClientMessageAt}
+                  hoursSinceLast={hoursSinceLast}
+                />
+              ) : (
+                <div className="border-t border-border/40 bg-gradient-to-br from-background to-muted/20 p-4 shadow-[inset_0_8px_12px_-8px_rgba(0,0,0,0.1)] shrink-0">
+                  <div className="flex gap-2 items-end bg-card/60 backdrop-blur-sm p-2 rounded-3xl shadow-lg border border-border/50">
+                    <FileUpload 
+                      onFileSelected={handleFileSelected}
                       disabled={isSending}
                     />
-                    <div className="relative">
-                      <Button
-                        onClick={handleGenerateSuggestion}
-                        disabled={isGeneratingSuggestion || isSending}
-                        size="icon"
-                        className="absolute -top-10 right-0 h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg shadow-purple-500/30 transition-all duration-300 hover:scale-105 z-10 disabled:opacity-50 disabled:hover:scale-100"
-                        title="Gerar resposta com IA"
-                      >
-                        {isGeneratingSuggestion ? (
-                          <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
-                        ) : (
-                          <Sparkles className="h-3.5 w-3.5 text-white" />
-                        )}
-                      </Button>
-                      <Button
-                        onClick={handleSend}
-                        disabled={!message.trim() || isSending}
-                        size="icon"
-                        className="h-12 w-12 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 transition-all duration-300 hover:scale-105 shrink-0 disabled:opacity-50 disabled:hover:scale-100"
-                      >
-                        <Send className="h-4 w-4 text-white" />
-                      </Button>
+                    <Textarea
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Digite sua mensagem..."
+                      className="min-h-[40px] max-h-[100px] resize-none flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60 py-2.5"
+                      disabled={isSending}
+                    />
+                    <div className="flex gap-2 items-end relative">
+                      <AudioRecorder 
+                        onAudioRecorded={handleAudioRecorded}
+                        disabled={isSending}
+                      />
+                      <div className="relative">
+                        <Button
+                          onClick={handleGenerateSuggestion}
+                          disabled={isGeneratingSuggestion || isSending}
+                          size="icon"
+                          className="absolute -top-10 right-0 h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg shadow-purple-500/30 transition-all duration-300 hover:scale-105 z-10 disabled:opacity-50 disabled:hover:scale-100"
+                          title="Gerar resposta com IA"
+                        >
+                          {isGeneratingSuggestion ? (
+                            <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3.5 w-3.5 text-white" />
+                          )}
+                        </Button>
+                        <Button
+                          onClick={handleSend}
+                          disabled={!message.trim() || isSending}
+                          size="icon"
+                          className="h-12 w-12 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 transition-all duration-300 hover:scale-105 shrink-0 disabled:opacity-50 disabled:hover:scale-100"
+                        >
+                          <Send className="h-4 w-4 text-white" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </TabsContent>
 
             <TabsContent value="media" className="flex-1 mt-0 overflow-hidden">
