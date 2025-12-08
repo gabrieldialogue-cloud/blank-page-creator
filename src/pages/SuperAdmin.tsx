@@ -1308,9 +1308,6 @@ export default function SuperAdmin() {
 
                 {/* Evolution Instance Manager Component */}
                 <EvolutionInstanceManager
-                  evolutionApiUrl={evolutionApiUrl}
-                  evolutionApiKey={evolutionApiKey}
-                  evolutionStatus={evolutionStatus}
                   vendedores={vendedores}
                 />
               </TabsContent>
