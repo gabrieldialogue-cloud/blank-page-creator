@@ -11,6 +11,8 @@ import { FileUpload } from "./FileUpload";
 import { ImagePreviewDialog } from "./ImagePreviewDialog";
 import { useToast } from "@/hooks/use-toast";
 import { compressImage, shouldCompress } from "@/lib/imageCompression";
+import { useWhatsAppWindow } from "@/hooks/useWhatsAppWindow";
+import { WhatsAppWindowAlert } from "./WhatsAppWindowAlert";
 
 interface Message {
   id: string;
@@ -48,6 +50,12 @@ export function ChatInterface({
   // Track typing indicator
   const isTyping = message.length > 0 && !isSending;
   useTypingIndicator(vendedorId || null, isTyping);
+
+  // Verificar janela de 24h do WhatsApp
+  const { isWindowClosed, lastClientMessageAt, hoursSinceLast } = useWhatsAppWindow({
+    messages: mensagens,
+    enabled: true,
+  });
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -333,36 +341,43 @@ export function ChatInterface({
           </ScrollArea>
 
           {/* Input */}
-          <div className="border-t border-border/40 bg-gradient-to-br from-background to-muted/20 p-6 shadow-[inset_0_8px_12px_-8px_rgba(0,0,0,0.1)]">
-            <div className="flex gap-3 items-end bg-card/60 backdrop-blur-sm p-3 rounded-3xl shadow-lg border border-border/50">
-              <Textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Digite sua mensagem..."
-                className="min-h-[60px] max-h-[120px] resize-none flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
-                disabled={isSending}
-              />
-              <div className="flex gap-2">
-                <FileUpload 
-                  onFileSelected={handleFileSelected}
+          {isWindowClosed ? (
+            <WhatsAppWindowAlert 
+              lastClientMessageAt={lastClientMessageAt}
+              hoursSinceLast={hoursSinceLast}
+            />
+          ) : (
+            <div className="border-t border-border/40 bg-gradient-to-br from-background to-muted/20 p-6 shadow-[inset_0_8px_12px_-8px_rgba(0,0,0,0.1)]">
+              <div className="flex gap-3 items-end bg-card/60 backdrop-blur-sm p-3 rounded-3xl shadow-lg border border-border/50">
+                <Textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Digite sua mensagem..."
+                  className="min-h-[60px] max-h-[120px] resize-none flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
                   disabled={isSending}
                 />
-                <AudioRecorder 
-                  onAudioRecorded={handleAudioRecorded}
-                  disabled={isSending}
-                />
-                <Button
-                  onClick={handleSend}
-                  disabled={!message.trim() || isSending}
-                  size="icon"
-                  className="h-14 w-14 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 transition-all duration-300 hover:scale-105 shrink-0 disabled:opacity-50 disabled:hover:scale-100"
-                >
-                  <Send className="h-5 w-5 text-white" />
-                </Button>
+                <div className="flex gap-2">
+                  <FileUpload 
+                    onFileSelected={handleFileSelected}
+                    disabled={isSending}
+                  />
+                  <AudioRecorder 
+                    onAudioRecorded={handleAudioRecorded}
+                    disabled={isSending}
+                  />
+                  <Button
+                    onClick={handleSend}
+                    disabled={!message.trim() || isSending}
+                    size="icon"
+                    className="h-14 w-14 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 transition-all duration-300 hover:scale-105 shrink-0 disabled:opacity-50 disabled:hover:scale-100"
+                  >
+                    <Send className="h-5 w-5 text-white" />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
           </div>
         </div>
       </div>
