@@ -1125,30 +1125,46 @@ export default function SuperAdmin() {
                           <Badge variant={number.is_active ? "default" : "secondary"} className={number.is_active ? "bg-success" : ""}>
                             {number.is_active ? 'Ativo' : 'Inativo'}
                           </Badge>
-                          {!number.is_main && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => toggleMetaNumberStatus(number.id)}
-                                title={number.is_active ? "Desativar" : "Ativar"}
-                              >
-                                {number.is_active ? (
-                                  <ToggleRight className="h-4 w-4 text-success" />
-                                ) : (
-                                  <ToggleLeft className="h-4 w-4" />
-                                )}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => deleteMetaNumber(number.id)}
-                                className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (number.is_main) {
+                                toast({
+                                  title: "Número Principal",
+                                  description: "Para desativar o número principal, remova as variáveis WHATSAPP_ACCESS_TOKEN e WHATSAPP_PHONE_NUMBER_ID no painel de secrets do Supabase.",
+                                  variant: "destructive",
+                                });
+                              } else {
+                                toggleMetaNumberStatus(number.id);
+                              }
+                            }}
+                            title={number.is_active ? "Desativar" : "Ativar"}
+                          >
+                            {number.is_active ? (
+                              <ToggleRight className="h-4 w-4 text-success" />
+                            ) : (
+                              <ToggleLeft className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (number.is_main) {
+                                toast({
+                                  title: "Número Principal",
+                                  description: "Para remover o número principal, exclua as variáveis WHATSAPP_ACCESS_TOKEN e WHATSAPP_PHONE_NUMBER_ID no painel de secrets do Supabase.",
+                                  variant: "destructive",
+                                });
+                              } else {
+                                deleteMetaNumber(number.id);
+                              }
+                            }}
+                            className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     ))}
