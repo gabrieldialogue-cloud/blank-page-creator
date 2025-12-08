@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -17,13 +17,13 @@ import {
   Plus,
   RefreshCw,
   Link,
-  Unlink,
   QrCode,
   Wifi,
   WifiOff,
-  Power,
   PowerOff,
   User,
+  Unplug,
+  Plug,
 } from "lucide-react";
 import {
   Dialog,
@@ -59,24 +59,38 @@ interface Vendedor {
   email: string;
 }
 
+interface VendedorAssociation {
+  usuario_id: string;
+  evolution_instance_name: string | null;
+  evolution_status: string | null;
+  usuario?: {
+    nome: string;
+    email: string;
+  };
+}
+
 interface Props {
-  evolutionApiUrl: string;
-  evolutionApiKey: string;
-  evolutionStatus: 'connected' | 'disconnected' | 'unknown';
   vendedores: Vendedor[];
 }
 
-export function EvolutionInstanceManager({ 
-  evolutionApiUrl, 
-  evolutionApiKey, 
-  evolutionStatus,
-  vendedores 
-}: Props) {
+export function EvolutionInstanceManager({ vendedores }: Props) {
   const { toast } = useToast();
   
+  // Evolution API connection state
+  const [evolutionApiUrl, setEvolutionApiUrl] = useState("");
+  const [evolutionApiKey, setEvolutionApiKey] = useState("");
+  const [evolutionStatus, setEvolutionStatus] = useState<'connected' | 'disconnected' | 'unknown'>('unknown');
+  const [evolutionSaving, setEvolutionSaving] = useState(false);
+  const [evolutionLoading, setEvolutionLoading] = useState(true);
+  const [evolutionConfigId, setEvolutionConfigId] = useState<string | null>(null);
+  
   const [instances, setInstances] = useState<EvolutionInstance[]>([]);
+  const [vendedorAssociations, setVendedorAssociations] = useState<VendedorAssociation[]>([]);
   const [loading, setLoading] = useState(false);
   const [creatingInstance, setCreatingInstance] = useState(false);
+  
+  // Polling
+  const [pollingEnabled, setPollingEnabled] = useState(true);
   
   // Create instance form
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -96,16 +110,211 @@ export function EvolutionInstanceManager({
   const [vendedorToAssociate, setVendedorToAssociate] = useState("");
   const [associating, setAssociating] = useState(false);
 
+  // Load saved Evolution config on mount
   useEffect(() => {
-    if (evolutionStatus === 'connected') {
-      fetchInstances();
-    }
-  }, [evolutionStatus]);
+    loadEvolutionConfig();
+    loadVendedorAssociations();
+  }, []);
 
-  const fetchInstances = async () => {
-    if (!evolutionApiUrl || !evolutionApiKey) return;
+  // Polling for instance status updates
+  useEffect(() => {
+    if (evolutionStatus !== 'connected' || !pollingEnabled) return;
+
+    const pollInterval = setInterval(() => {
+      fetchInstances(true); // silent refresh
+    }, 10000); // every 10 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [evolutionStatus, pollingEnabled, evolutionApiUrl, evolutionApiKey]);
+
+  const loadEvolutionConfig = async () => {
+    setEvolutionLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('evolution_config' as any)
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        const config = data as any;
+        setEvolutionConfigId(config.id);
+        setEvolutionApiUrl(config.api_url);
+        setEvolutionApiKey(config.api_key);
+        setEvolutionStatus(config.is_connected ? 'connected' : 'disconnected');
+        
+        if (config.is_connected) {
+          // Need to set credentials before fetching
+          setTimeout(() => fetchInstancesWithCredentials(config.api_url, config.api_key), 100);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading Evolution config:', error);
+    } finally {
+      setEvolutionLoading(false);
+    }
+  };
+
+  const fetchInstancesWithCredentials = async (apiUrl: string, apiKey: string) => {
+    if (!apiUrl || !apiKey) return;
     
     setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-evolution-instance', {
+        body: {
+          action: 'list_instances',
+          evolutionApiUrl: apiUrl,
+          evolutionApiKey: apiKey,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        const instanceList = data.instances || [];
+        setInstances(instanceList);
+      }
+    } catch (error) {
+      console.error('Error fetching instances:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadVendedorAssociations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('config_vendedores')
+        .select(`
+          usuario_id,
+          evolution_instance_name,
+          evolution_status,
+          usuarios:usuario_id (nome, email)
+        ` as any);
+
+      if (error) throw error;
+      setVendedorAssociations((data as any) || []);
+    } catch (error) {
+      console.error('Error loading vendedor associations:', error);
+    }
+  };
+
+  const saveEvolutionCredentials = async () => {
+    if (!evolutionApiUrl || !evolutionApiKey) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "URL e API Key são obrigatórios",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setEvolutionSaving(true);
+    try {
+      // Validate connection first
+      const { data: validateData, error: validateError } = await supabase.functions.invoke('manage-whatsapp-credentials', {
+        body: {
+          action: 'save_evolution_credentials',
+          credentials: {
+            apiUrl: evolutionApiUrl,
+            apiKey: evolutionApiKey,
+          },
+        },
+      });
+
+      if (validateError) throw validateError;
+
+      if (!validateData?.success) {
+        setEvolutionStatus('disconnected');
+        toast({
+          title: "Erro na conexão",
+          description: validateData?.message || "Erro ao conectar com Evolution API",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Save to database
+      if (evolutionConfigId) {
+        await supabase
+          .from('evolution_config' as any)
+          .update({
+            api_url: evolutionApiUrl,
+            api_key: evolutionApiKey,
+            is_connected: true,
+          } as any)
+          .eq('id', evolutionConfigId);
+      } else {
+        const { data: newConfig } = await supabase
+          .from('evolution_config' as any)
+          .insert({
+            api_url: evolutionApiUrl,
+            api_key: evolutionApiKey,
+            is_connected: true,
+          } as any)
+          .select()
+          .single();
+        
+        if (newConfig) {
+          setEvolutionConfigId((newConfig as any).id);
+        }
+      }
+
+      setEvolutionStatus('connected');
+      toast({
+        title: "Conexão estabelecida",
+        description: validateData.message,
+      });
+      
+      fetchInstances();
+    } catch (error) {
+      console.error('Error saving Evolution credentials:', error);
+      setEvolutionStatus('disconnected');
+      toast({
+        title: "Erro ao conectar",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setEvolutionSaving(false);
+    }
+  };
+
+  const disconnectEvolution = async () => {
+    if (!confirm('Tem certeza que deseja desconectar da Evolution API? Todas as instâncias ficarão inacessíveis.')) return;
+
+    try {
+      if (evolutionConfigId) {
+        await supabase
+          .from('evolution_config' as any)
+          .update({ is_connected: false })
+          .eq('id', evolutionConfigId);
+      }
+
+      setEvolutionStatus('disconnected');
+      setInstances([]);
+      
+      toast({
+        title: "Desconectado",
+        description: "Evolution API desconectada. As instâncias não estão mais acessíveis.",
+      });
+    } catch (error) {
+      console.error('Error disconnecting Evolution:', error);
+      toast({
+        title: "Erro ao desconectar",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchInstances = useCallback(async (silent = false) => {
+    if (!evolutionApiUrl || !evolutionApiKey) return;
+    
+    if (!silent) setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('manage-evolution-instance', {
         body: {
@@ -118,37 +327,22 @@ export function EvolutionInstanceManager({
       if (error) throw error;
 
       if (data?.success) {
-        // Process instances and check their connection status
         const instanceList = data.instances || [];
         setInstances(instanceList);
       }
     } catch (error) {
       console.error('Error fetching instances:', error);
-      toast({
-        title: "Erro ao carregar instâncias",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
+      if (!silent) {
+        toast({
+          title: "Erro ao carregar instâncias",
+          description: error instanceof Error ? error.message : "Erro desconhecido",
+          variant: "destructive",
+        });
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  };
-
-  const getInstanceStatus = async (instanceName: string) => {
-    try {
-      const { data } = await supabase.functions.invoke('manage-evolution-instance', {
-        body: {
-          action: 'check_instance_status',
-          evolutionApiUrl,
-          evolutionApiKey,
-          instanceData: { instanceName },
-        },
-      });
-      return data?.status || 'unknown';
-    } catch {
-      return 'unknown';
-    }
-  };
+  }, [evolutionApiUrl, evolutionApiKey, toast]);
 
   const fetchQrCode = async (instanceName: string) => {
     setLoadingQr(true);
@@ -223,19 +417,18 @@ export function EvolutionInstanceManager({
           description: data.message,
         });
         
-        // Show QR code if available
         if (data.qrCode) {
           setCurrentQrCode(data.qrCode);
           setCurrentInstanceName(newInstanceName);
           setQrDialogOpen(true);
         }
 
-        // Reset form and refresh
         setNewInstanceName("");
         setSelectedVendedor("");
         setPhoneNumber("");
         setShowCreateForm(false);
         fetchInstances();
+        loadVendedorAssociations();
       } else {
         toast({
           title: "Erro ao criar instância",
@@ -276,6 +469,18 @@ export function EvolutionInstanceManager({
           description: `A instância "${instanceName}" foi removida`,
         });
         fetchInstances();
+        
+        // Clear association for any vendedor using this instance
+        try {
+          await (supabase as any)
+            .from('config_vendedores')
+            .update({ evolution_instance_name: null, evolution_status: 'disconnected' })
+            .eq('evolution_instance_name', instanceName);
+        } catch (clearError) {
+          console.error('Error clearing association:', clearError);
+        }
+        
+        loadVendedorAssociations();
       } else {
         toast({
           title: "Erro ao deletar",
@@ -379,8 +584,6 @@ export function EvolutionInstanceManager({
 
     setAssociating(true);
     try {
-      // Update config_vendedores with the instance name using raw update
-      // The columns were just added via migration
       const { error } = await supabase
         .from('config_vendedores')
         .update({
@@ -399,6 +602,7 @@ export function EvolutionInstanceManager({
       setAssociateDialogOpen(false);
       setInstanceToAssociate("");
       setVendedorToAssociate("");
+      loadVendedorAssociations();
     } catch (error) {
       console.error('Error associating instance:', error);
       toast({
@@ -439,270 +643,382 @@ export function EvolutionInstanceManager({
     }
   };
 
-  if (evolutionStatus !== 'connected') {
+  const getAssociatedVendedor = (instanceName: string) => {
+    return vendedorAssociations.find(a => a.evolution_instance_name === instanceName);
+  };
+
+  if (evolutionLoading) {
     return (
-      <div className="text-center py-8 rounded-lg border border-dashed">
-        <WifiOff className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
-        <p className="text-sm text-muted-foreground">
-          Conecte à Evolution API primeiro
-        </p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Configure a URL e API Key acima para gerenciar instâncias
-        </p>
+      <div className="flex justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header with actions */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold text-foreground">Instâncias da Evolution API</h3>
-          <p className="text-sm text-muted-foreground">
-            {instances.length} instância(s) encontrada(s)
-          </p>
+      {/* Evolution API Connection */}
+      <div className="space-y-4 rounded-lg border border-green-500/30 bg-green-500/5 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Smartphone className="h-5 w-5 text-green-500" />
+            <h3 className="font-semibold text-foreground">Conexão Evolution API</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            {evolutionStatus === 'connected' ? (
+              <Badge className="bg-success text-success-foreground">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Conectado
+              </Badge>
+            ) : evolutionStatus === 'disconnected' ? (
+              <Badge variant="destructive">
+                <XCircle className="h-3 w-3 mr-1" />
+                Desconectado
+              </Badge>
+            ) : (
+              <Badge variant="secondary">
+                <AlertCircle className="h-3 w-3 mr-1" />
+                Não configurado
+              </Badge>
+            )}
+          </div>
         </div>
+
+        <Separator />
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="evolution-api-url">URL da Evolution API</Label>
+            <Input
+              id="evolution-api-url"
+              placeholder="https://sua-evolution-api.com"
+              value={evolutionApiUrl}
+              onChange={(e) => setEvolutionApiUrl(e.target.value)}
+              disabled={evolutionStatus === 'connected'}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="evolution-api-key">API Key (Global)</Label>
+            <Input
+              id="evolution-api-key"
+              type="password"
+              placeholder="sua-api-key-aqui"
+              value={evolutionApiKey}
+              onChange={(e) => setEvolutionApiKey(e.target.value)}
+              disabled={evolutionStatus === 'connected'}
+            />
+          </div>
+        </div>
+
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchInstances}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setShowCreateForm(true)}
-            className="bg-green-500 hover:bg-green-600"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Nova Instância
-          </Button>
-        </div>
-      </div>
-
-      {/* Create Instance Form */}
-      {showCreateForm && (
-        <div className="space-y-4 p-4 rounded-lg border border-green-500/30 bg-green-500/5">
-          <div className="flex items-center justify-between">
-            <h4 className="font-medium">Criar Nova Instância</h4>
-            <Button variant="ghost" size="sm" onClick={() => setShowCreateForm(false)}>
-              <XCircle className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="instance-name">Nome da Instância *</Label>
-              <Input
-                id="instance-name"
-                placeholder="vendedor_joao"
-                value={newInstanceName}
-                onChange={(e) => setNewInstanceName(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">Identificador único (sem espaços)</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="associate-vendedor">Associar a Vendedor (opcional)</Label>
-              <Select value={selectedVendedor} onValueChange={setSelectedVendedor}>
-                <SelectTrigger id="associate-vendedor">
-                  <SelectValue placeholder="Selecione um vendedor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
-                  {vendedores.map((vend) => (
-                    <SelectItem key={vend.id} value={vend.id}>
-                      {vend.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="phone-number">Número do WhatsApp (opcional)</Label>
-              <Input
-                id="phone-number"
-                placeholder="5511999999999"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">Número com código do país (sem + ou espaços)</p>
-            </div>
-          </div>
-
-          <div className="flex gap-2">
+          {evolutionStatus === 'connected' ? (
             <Button
-              onClick={createInstance}
-              className="flex-1 bg-green-500 hover:bg-green-600"
-              disabled={creatingInstance || !newInstanceName}
+              onClick={disconnectEvolution}
+              variant="destructive"
+              className="flex-1"
             >
-              {creatingInstance ? (
+              <Unplug className="mr-2 h-4 w-4" />
+              Desconectar da Evolution API
+            </Button>
+          ) : (
+            <Button
+              onClick={saveEvolutionCredentials}
+              className="flex-1 bg-green-500 hover:bg-green-600"
+              disabled={evolutionSaving || !evolutionApiUrl || !evolutionApiKey}
+            >
+              {evolutionSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Criando...
+                  Conectando...
                 </>
               ) : (
                 <>
-                  <Smartphone className="mr-2 h-4 w-4" />
-                  Criar Instância
+                  <Plug className="mr-2 h-4 w-4" />
+                  Conectar à Evolution API
                 </>
               )}
             </Button>
-            <Button variant="outline" onClick={() => setShowCreateForm(false)}>
-              Cancelar
-            </Button>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
-      {/* Instances List */}
-      {loading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : instances.length === 0 ? (
-        <div className="text-center py-8 rounded-lg border border-dashed">
-          <Smartphone className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
-          <p className="text-sm text-muted-foreground">
-            Nenhuma instância encontrada
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Clique em "Nova Instância" para criar
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {instances.map((instance) => {
-            const instanceName = instance.instanceName || instance.instance?.instanceName || '';
-            const isConnected = instance.connectionStatus === 'open' || instance.instance?.state === 'open';
-            const profileName = instance.profileName || instance.instance?.profileName;
-            const ownerNumber = instance.owner || instance.instance?.owner;
-            const profilePicture = instance.profilePictureUrl || instance.instance?.profilePictureUrl;
-            
-            return (
-              <div
-                key={instanceName || instance.instanceId}
-                className={`p-4 rounded-lg border transition-colors ${
-                  isConnected 
-                    ? 'border-success/30 bg-success/5' 
-                    : 'border-muted bg-card hover:bg-accent/5'
-                }`}
+      {/* Instances Management - Only show when connected */}
+      {evolutionStatus === 'connected' && (
+        <>
+          {/* Header with actions */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-foreground">Instâncias WhatsApp</h3>
+              <p className="text-sm text-muted-foreground">
+                {instances.length} instância(s) • Atualização automática: {pollingEnabled ? 'Ativa' : 'Pausada'}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPollingEnabled(!pollingEnabled)}
+                title={pollingEnabled ? "Pausar atualização automática" : "Ativar atualização automática"}
               >
-                <div className="flex items-start justify-between gap-4">
-                  {/* Left side - Instance info */}
-                  <div className="flex items-start gap-3 flex-1">
-                    {/* Profile picture or icon */}
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-full overflow-hidden flex-shrink-0 ${
-                      isConnected ? 'bg-success/20' : 'bg-muted'
-                    }`}>
-                      {profilePicture ? (
-                        <img 
-                          src={profilePicture} 
-                          alt={profileName || instanceName}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : isConnected ? (
-                        <Wifi className="h-6 w-6 text-success" />
-                      ) : (
-                        <WifiOff className="h-6 w-6 text-muted-foreground" />
-                      )}
-                    </div>
-                    
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-foreground">
-                          {instanceName}
-                        </p>
-                        <Badge className={getConnectionStatusColor(instance)} variant="secondary">
-                          {getConnectionStatusLabel(instance)}
-                        </Badge>
-                      </div>
-                      
-                      {profileName && (
-                        <p className="text-sm text-foreground mt-1 flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {profileName}
-                        </p>
-                      )}
-                      
-                      {ownerNumber && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          📱 {ownerNumber}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                {pollingEnabled ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchInstances()}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setShowCreateForm(true)}
+                className="bg-green-500 hover:bg-green-600"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Nova Instância
+              </Button>
+            </div>
+          </div>
 
-                  {/* Right side - Actions */}
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    {/* Connect/Disconnect toggle */}
-                    {isConnected ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => disconnectInstance(instanceName)}
-                        className="text-amber-600 hover:bg-amber-500 hover:text-white"
-                        title="Desconectar WhatsApp"
-                      >
-                        <PowerOff className="h-4 w-4" />
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => fetchQrCode(instanceName)}
-                        className="text-success hover:bg-success hover:text-success-foreground"
-                        title="Conectar via QR Code"
-                      >
-                        <QrCode className="h-4 w-4" />
-                      </Button>
-                    )}
+          {/* Create Instance Form */}
+          {showCreateForm && (
+            <div className="space-y-4 p-4 rounded-lg border border-green-500/30 bg-green-500/5">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Criar Nova Instância</h4>
+                <Button variant="ghost" size="sm" onClick={() => setShowCreateForm(false)}>
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="instance-name">Nome da Instância *</Label>
+                  <Input
+                    id="instance-name"
+                    placeholder="vendedor_joao"
+                    value={newInstanceName}
+                    onChange={(e) => setNewInstanceName(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Identificador único (sem espaços)</p>
+                </div>
 
-                    {/* Restart button */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => restartInstance(instanceName)}
-                      title="Reiniciar instância"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                    </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="associate-vendedor">Associar a Vendedor (opcional)</Label>
+                  <Select value={selectedVendedor} onValueChange={setSelectedVendedor}>
+                    <SelectTrigger id="associate-vendedor">
+                      <SelectValue placeholder="Selecione um vendedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Nenhum</SelectItem>
+                      {vendedores.map((vend) => (
+                        <SelectItem key={vend.id} value={vend.id}>
+                          {vend.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                    {/* Associate button */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setInstanceToAssociate(instanceName);
-                        setAssociateDialogOpen(true);
-                      }}
-                      title="Associar a vendedor"
-                    >
-                      <Link className="h-4 w-4" />
-                    </Button>
-
-                    {/* Delete button */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => deleteInstance(instanceName)}
-                      className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                      title="Deletar instância"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="phone-number">Número do WhatsApp (opcional)</Label>
+                  <Input
+                    id="phone-number"
+                    placeholder="5511999999999"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Número com código do país (sem + ou espaços)</p>
                 </div>
               </div>
-            );
-          })}
-        </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={createInstance}
+                  className="flex-1 bg-green-500 hover:bg-green-600"
+                  disabled={creatingInstance || !newInstanceName}
+                >
+                  {creatingInstance ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Criando...
+                    </>
+                  ) : (
+                    <>
+                      <Smartphone className="mr-2 h-4 w-4" />
+                      Criar Instância
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={() => setShowCreateForm(false)}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Instances List */}
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : instances.length === 0 ? (
+            <div className="text-center py-8 rounded-lg border border-dashed">
+              <Smartphone className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
+              <p className="text-sm text-muted-foreground">
+                Nenhuma instância encontrada
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Clique em "Nova Instância" para criar
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {instances.map((instance) => {
+                const instanceName = instance.instanceName || instance.instance?.instanceName || '';
+                const isConnected = instance.connectionStatus === 'open' || instance.instance?.state === 'open';
+                const profileName = instance.profileName || instance.instance?.profileName;
+                const ownerNumber = instance.owner || instance.instance?.owner;
+                const profilePicture = instance.profilePictureUrl || instance.instance?.profilePictureUrl;
+                const associatedVendedor = getAssociatedVendedor(instanceName);
+                
+                return (
+                  <div
+                    key={instanceName || instance.instanceId}
+                    className={`p-4 rounded-lg border transition-colors ${
+                      isConnected 
+                        ? 'border-success/30 bg-success/5' 
+                        : 'border-muted bg-card hover:bg-accent/5'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      {/* Left side - Instance info */}
+                      <div className="flex items-start gap-3 flex-1">
+                        {/* Profile picture or icon */}
+                        <div className={`flex h-12 w-12 items-center justify-center rounded-full overflow-hidden flex-shrink-0 ${
+                          isConnected ? 'bg-success/20' : 'bg-muted'
+                        }`}>
+                          {profilePicture ? (
+                            <img 
+                              src={profilePicture} 
+                              alt={profileName || instanceName}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : isConnected ? (
+                            <Wifi className="h-6 w-6 text-success" />
+                          ) : (
+                            <WifiOff className="h-6 w-6 text-muted-foreground" />
+                          )}
+                        </div>
+                        
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-foreground">
+                              {instanceName}
+                            </p>
+                            <Badge className={getConnectionStatusColor(instance)} variant="secondary">
+                              {getConnectionStatusLabel(instance)}
+                            </Badge>
+                          </div>
+                          
+                          {profileName && (
+                            <p className="text-sm text-foreground mt-1 flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {profileName}
+                            </p>
+                          )}
+                          
+                          {ownerNumber && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              📱 {ownerNumber}
+                            </p>
+                          )}
+
+                          {/* Associated vendedor */}
+                          {associatedVendedor ? (
+                            <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 bg-primary/10 rounded-md">
+                              <Link className="h-3 w-3 text-primary" />
+                              <span className="text-xs text-primary font-medium">
+                                {(associatedVendedor as any).usuarios?.nome || 'Vendedor associado'}
+                              </span>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground mt-2 italic">
+                              Sem vendedor associado
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right side - Actions */}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {/* Connect/Disconnect toggle */}
+                        {isConnected ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => disconnectInstance(instanceName)}
+                            className="text-amber-600 hover:bg-amber-500 hover:text-white"
+                            title="Desconectar WhatsApp"
+                          >
+                            <PowerOff className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fetchQrCode(instanceName)}
+                            className="text-success hover:bg-success hover:text-success-foreground"
+                            title="Conectar via QR Code"
+                          >
+                            <QrCode className="h-4 w-4" />
+                          </Button>
+                        )}
+
+                        {/* Restart button */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => restartInstance(instanceName)}
+                          title="Reiniciar instância"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+
+                        {/* Associate button */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setInstanceToAssociate(instanceName);
+                            setAssociateDialogOpen(true);
+                          }}
+                          title="Associar a vendedor"
+                        >
+                          <Link className="h-4 w-4" />
+                        </Button>
+
+                        {/* Delete button */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => deleteInstance(instanceName)}
+                          className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                          title="Deletar instância"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
       {/* QR Code Dialog */}

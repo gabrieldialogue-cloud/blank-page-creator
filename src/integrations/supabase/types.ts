@@ -163,6 +163,33 @@ export type Database = {
           },
         ]
       }
+      evolution_config: {
+        Row: {
+          api_key: string
+          api_url: string
+          created_at: string | null
+          id: string
+          is_connected: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_key: string
+          api_url: string
+          created_at?: string | null
+          id?: string
+          is_connected?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_key?: string
+          api_url?: string
+          created_at?: string | null
+          id?: string
+          is_connected?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       intervencoes: {
         Row: {
           atendimento_id: string | null
