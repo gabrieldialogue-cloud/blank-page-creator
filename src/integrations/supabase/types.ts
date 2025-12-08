@@ -117,6 +117,9 @@ export type Database = {
         Row: {
           created_at: string | null
           especialidade_marca: string
+          evolution_instance_name: string | null
+          evolution_phone_number: string | null
+          evolution_status: string | null
           id: string
           prioridade: Database["public"]["Enums"]["prioridade_vendedor"]
           status_online: boolean | null
@@ -127,6 +130,9 @@ export type Database = {
         Insert: {
           created_at?: string | null
           especialidade_marca: string
+          evolution_instance_name?: string | null
+          evolution_phone_number?: string | null
+          evolution_status?: string | null
           id?: string
           prioridade?: Database["public"]["Enums"]["prioridade_vendedor"]
           status_online?: boolean | null
@@ -137,6 +143,9 @@ export type Database = {
         Update: {
           created_at?: string | null
           especialidade_marca?: string
+          evolution_instance_name?: string | null
+          evolution_phone_number?: string | null
+          evolution_status?: string | null
           id?: string
           prioridade?: Database["public"]["Enums"]["prioridade_vendedor"]
           status_online?: boolean | null
