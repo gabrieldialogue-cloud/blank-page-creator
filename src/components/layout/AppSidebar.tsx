@@ -27,6 +27,7 @@ const menuItems = [
 
 const supervisorItems = [
   { title: "Atendimentos", url: "/supervisor/atendimentos", icon: MessageSquare },
+  { title: "Contatos", url: "/supervisor/contatos", icon: Users },
   { title: "Gestão", url: "/supervisor", icon: Shield }
 ];
 
