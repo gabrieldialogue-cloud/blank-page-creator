@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ClientAvatar } from "@/components/ui/client-avatar";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Phone, Mail, Car, MessageSquare, Calendar, User, Edit, History, Filter, Trash2, ChevronDown, ChevronRight, Users } from "lucide-react";
+import { Search, Phone, Mail, Car, MessageSquare, Calendar, User, Edit, History, Filter, Trash2, ChevronDown, ChevronRight, Users, AlertCircle } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { format, isAfter, isBefore, startOfDay, endOfDay, subDays } from "date-fns";
@@ -267,6 +267,16 @@ export default function SupervisorContatos() {
 
   const filteredClientes = clientes.filter(filterCliente);
 
+  // Separate unassigned clients
+  const unassignedClientes = filteredClientes.filter(cliente => 
+    cliente.atendimentos.some(a => a.vendedor_fixo_id === null)
+  );
+
+  // Check if a client has any unassigned atendimento
+  const isClienteUnassigned = (cliente: Cliente): boolean => {
+    return cliente.atendimentos.some(a => a.vendedor_fixo_id === null);
+  };
+
   // Group clients by marca > vendedor
   const groupedData: GroupedData = {};
   
@@ -344,63 +354,75 @@ export default function SupervisorContatos() {
 
   const hasActiveFilters = statusFilter !== "all" || dateFilter !== "all" || marcaFilter !== "all";
 
-  const ClienteCard = ({ cliente }: { cliente: Cliente }) => (
-    <Card className="hover:border-primary/50 transition-colors">
-      <CardHeader className="py-3">
-        <div className="flex items-start gap-3">
-          <ClientAvatar name={cliente.nome} imageUrl={null} className="h-10 w-10" />
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-base mb-1">{cliente.nome}</CardTitle>
-            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Phone className="h-3 w-3" />
-                {cliente.telefone}
+  const ClienteCard = ({ cliente, showUnassignedBadge = true }: { cliente: Cliente; showUnassignedBadge?: boolean }) => {
+    const hasUnassigned = isClienteUnassigned(cliente);
+    
+    return (
+      <Card className={`hover:border-primary/50 transition-colors ${hasUnassigned && showUnassignedBadge ? 'border-amber-500/50 bg-amber-500/5' : ''}`}>
+        <CardHeader className="py-3">
+          <div className="flex items-start gap-3">
+            <ClientAvatar name={cliente.nome} imageUrl={null} className="h-10 w-10" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <CardTitle className="text-base">{cliente.nome}</CardTitle>
+                {hasUnassigned && showUnassignedBadge && (
+                  <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/30">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Não Atribuído
+                  </Badge>
+                )}
               </div>
-              {cliente.email && (
+              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  <Mail className="h-3 w-3" />
-                  {cliente.email}
+                  <Phone className="h-3 w-3" />
+                  {cliente.telefone}
                 </div>
-              )}
+                {cliente.email && (
+                  <div className="flex items-center gap-1">
+                    <Mail className="h-3 w-3" />
+                    {cliente.email}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-1 shrink-0">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingCliente(cliente)}>
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewingHistory(cliente)}>
+                <History className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeletingCliente(cliente)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-          <div className="flex gap-1 shrink-0">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingCliente(cliente)}>
-              <Edit className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewingHistory(cliente)}>
-              <History className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeletingCliente(cliente)}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0 pb-3">
-        {cliente.atendimentos.length > 0 && (
-          <div className="space-y-1.5">
-            {cliente.atendimentos.slice(0, 2).map((atendimento) => (
-              <div key={atendimento.id} className="flex items-center justify-between p-2 rounded-md border bg-muted/30 text-sm">
-                <div className="flex items-center gap-2">
-                  <Car className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>{atendimento.marca_veiculo}{atendimento.modelo_veiculo && ` ${atendimento.modelo_veiculo}`}</span>
+        </CardHeader>
+        <CardContent className="pt-0 pb-3">
+          {cliente.atendimentos.length > 0 && (
+            <div className="space-y-1.5">
+              {cliente.atendimentos.slice(0, 2).map((atendimento) => (
+                <div key={atendimento.id} className={`flex items-center justify-between p-2 rounded-md border text-sm ${atendimento.vendedor_fixo_id === null ? 'bg-amber-500/10 border-amber-500/30' : 'bg-muted/30'}`}>
+                  <div className="flex items-center gap-2">
+                    <Car className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{atendimento.marca_veiculo}{atendimento.modelo_veiculo && ` ${atendimento.modelo_veiculo}`}</span>
+                  </div>
+                  <Badge variant="outline" className={`text-xs ${getStatusColor(atendimento.status)}`}>
+                    {getStatusLabel(atendimento.status)}
+                  </Badge>
                 </div>
-                <Badge variant="outline" className={`text-xs ${getStatusColor(atendimento.status)}`}>
-                  {getStatusLabel(atendimento.status)}
-                </Badge>
-              </div>
-            ))}
-            {cliente.atendimentos.length > 2 && (
-              <p className="text-xs text-muted-foreground text-center">
-                + {cliente.atendimentos.length - 2} atendimento(s)
-              </p>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+              ))}
+              {cliente.atendimentos.length > 2 && (
+                <p className="text-xs text-muted-foreground text-center">
+                  + {cliente.atendimentos.length - 2} atendimento(s)
+                </p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <MainLayout>
@@ -522,6 +544,49 @@ export default function SupervisorContatos() {
                 </Card>
               ) : (
                 <div className="space-y-3">
+                  {/* Unassigned Section */}
+                  {unassignedClientes.length > 0 && (
+                    <Card className="overflow-hidden border-amber-500/50 bg-gradient-to-r from-amber-500/5 to-orange-500/5">
+                      <Collapsible open={expandedMarcas.has('__unassigned__')} onOpenChange={() => toggleMarca('__unassigned__')}>
+                        <CollapsibleTrigger asChild>
+                          <CardHeader className="cursor-pointer hover:bg-amber-500/10 transition-colors py-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                {expandedMarcas.has('__unassigned__') ? (
+                                  <ChevronDown className="h-5 w-5 text-amber-600" />
+                                ) : (
+                                  <ChevronRight className="h-5 w-5 text-amber-600" />
+                                )}
+                                <div className="h-10 w-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                                  <AlertCircle className="h-5 w-5 text-amber-600" />
+                                </div>
+                                <div>
+                                  <CardTitle className="text-lg text-amber-700">Não Atribuídos</CardTitle>
+                                  <p className="text-sm text-amber-600/80">
+                                    Contatos aguardando atribuição de vendedor
+                                  </p>
+                                </div>
+                              </div>
+                              <Badge className="bg-amber-500/20 text-amber-700 border-amber-500/30">
+                                {unassignedClientes.length} contato(s)
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <CardContent className="pt-0 pb-4">
+                            <div className="grid gap-3 md:grid-cols-2">
+                              {unassignedClientes.map(cliente => (
+                                <ClienteCard key={cliente.id} cliente={cliente} showUnassignedBadge={false} />
+                              ))}
+                            </div>
+                          </CardContent>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </Card>
+                  )}
+
+                  {/* Grouped by Marca */}
                   {Object.entries(groupedData).map(([marca, vendedoresData]) => {
                     const totalContatos = Object.values(vendedoresData).reduce((sum, v) => sum + v.clientes.length, 0);
                     const isMarcaExpanded = expandedMarcas.has(marca);
@@ -586,7 +651,7 @@ export default function SupervisorContatos() {
                                           ) : (
                                             <div className="grid gap-3 md:grid-cols-2">
                                               {vendedorClientes.map(cliente => (
-                                                <ClienteCard key={cliente.id} cliente={cliente} />
+                                                <ClienteCard key={cliente.id} cliente={cliente} showUnassignedBadge={false} />
                                               ))}
                                             </div>
                                           )}
