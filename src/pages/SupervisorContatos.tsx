@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ClientAvatar } from "@/components/ui/client-avatar";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Phone, Mail, Car, MessageSquare, Calendar, User, Edit, History, Filter, Trash2, ChevronDown, ChevronRight, Users, AlertCircle } from "lucide-react";
+import { Search, Phone, Mail, Car, User, Edit, History, Filter, Trash2, ChevronDown, ChevronRight, Users, AlertCircle, Building2, Smartphone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { format, isAfter, isBefore, startOfDay, endOfDay, subDays } from "date-fns";
@@ -36,6 +36,7 @@ interface Cliente {
     status: string;
     created_at: string;
     vendedor_fixo_id: string | null;
+    source: string | null;
     mensagens?: Array<{
       id: string;
       conteudo: string;
@@ -67,6 +68,7 @@ export default function SupervisorContatos() {
   const [deletingCliente, setDeletingCliente] = useState<Cliente | null>(null);
   const [expandedMarcas, setExpandedMarcas] = useState<Set<string>>(new Set());
   const [expandedVendedores, setExpandedVendedores] = useState<Set<string>>(new Set());
+  const [sourceFilter, setSourceFilter] = useState<"all" | "principal" | "pessoal">("all");
 
   useEffect(() => {
     fetchData();
@@ -132,6 +134,7 @@ export default function SupervisorContatos() {
         status,
         created_at,
         vendedor_fixo_id,
+        source,
         cliente:clientes (
           id,
           nome,
@@ -149,7 +152,7 @@ export default function SupervisorContatos() {
       .in("vendedor_fixo_id", vendedorIds)
       .order("created_at", { ascending: false });
 
-    // Also get unassigned contacts (vendedor_fixo_id is null)
+    // Also get unassigned contacts (vendedor_fixo_id is null) - only from main number
     const { data: unassignedAtendimentos, error: unassignedError } = await supabase
       .from("atendimentos")
       .select(`
@@ -159,6 +162,7 @@ export default function SupervisorContatos() {
         status,
         created_at,
         vendedor_fixo_id,
+        source,
         cliente:clientes (
           id,
           nome,
@@ -174,6 +178,7 @@ export default function SupervisorContatos() {
         )
       `)
       .is("vendedor_fixo_id", null)
+      .or("source.eq.meta,source.is.null")
       .order("created_at", { ascending: false });
 
     if (assignedError || unassignedError) {
@@ -206,6 +211,7 @@ export default function SupervisorContatos() {
         status: atendimento.status || "",
         created_at: atendimento.created_at || "",
         vendedor_fixo_id: atendimento.vendedor_fixo_id,
+        source: atendimento.source,
         mensagens: atendimento.mensagens as any[]
       });
     });
@@ -267,14 +273,47 @@ export default function SupervisorContatos() {
 
   const filteredClientes = clientes.filter(filterCliente);
 
-  // Separate unassigned clients
-  const unassignedClientes = filteredClientes.filter(cliente => 
-    cliente.atendimentos.some(a => a.vendedor_fixo_id === null)
+  // Filter by source
+  const getClientsForSource = (source: "all" | "principal" | "pessoal") => {
+    if (source === "all") return filteredClientes;
+    if (source === "principal") {
+      return filteredClientes.filter(cliente => 
+        cliente.atendimentos.some(a => a.source === "meta" || !a.source)
+      );
+    }
+    return filteredClientes.filter(cliente => 
+      cliente.atendimentos.some(a => a.source === "evolution")
+    );
+  };
+
+  const currentClientes = getClientsForSource(sourceFilter);
+
+  // Separate unassigned clients (only from main number)
+  const unassignedClientes = currentClientes.filter(cliente => 
+    cliente.atendimentos.some(a => a.vendedor_fixo_id === null && (a.source === "meta" || !a.source))
   );
 
   // Check if a client has any unassigned atendimento
   const isClienteUnassigned = (cliente: Cliente): boolean => {
     return cliente.atendimentos.some(a => a.vendedor_fixo_id === null);
+  };
+
+  // Get source badge for atendimento
+  const getSourceBadge = (source: string | null) => {
+    if (source === "evolution") {
+      return (
+        <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-500/30">
+          <Smartphone className="h-3 w-3 mr-1" />
+          Pessoal
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/30">
+        <Building2 className="h-3 w-3 mr-1" />
+        Principal
+      </Badge>
+    );
   };
 
   // Group clients by marca > vendedor
@@ -291,7 +330,7 @@ export default function SupervisorContatos() {
     };
   });
 
-  filteredClientes.forEach(cliente => {
+  currentClientes.forEach(cliente => {
     cliente.atendimentos.forEach(atendimento => {
       if (atendimento.vendedor_fixo_id) {
         const vendedor = vendedores.find(v => v.id === atendimento.vendedor_fixo_id);
@@ -354,7 +393,7 @@ export default function SupervisorContatos() {
 
   const hasActiveFilters = statusFilter !== "all" || dateFilter !== "all" || marcaFilter !== "all";
 
-  const ClienteCard = ({ cliente, showUnassignedBadge = true }: { cliente: Cliente; showUnassignedBadge?: boolean }) => {
+  const ClienteCard = ({ cliente, showUnassignedBadge = true, showSourceBadge = true }: { cliente: Cliente; showUnassignedBadge?: boolean; showSourceBadge?: boolean }) => {
     const hasUnassigned = isClienteUnassigned(cliente);
     
     return (
@@ -421,9 +460,12 @@ export default function SupervisorContatos() {
                       {atendimento.modelo_veiculo && ` ${atendimento.modelo_veiculo}`}
                     </span>
                   </div>
-                  <Badge variant="outline" className={`text-xs shrink-0 ${getStatusColor(atendimento.status)}`}>
-                    {getStatusLabel(atendimento.status)}
-                  </Badge>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {showSourceBadge && getSourceBadge(atendimento.source)}
+                    <Badge variant="outline" className={`text-xs ${getStatusColor(atendimento.status)}`}>
+                      {getStatusLabel(atendimento.status)}
+                    </Badge>
+                  </div>
                 </div>
               ))}
               {cliente.atendimentos.length > 2 && (
@@ -450,7 +492,7 @@ export default function SupervisorContatos() {
             </p>
           </div>
           <Badge variant="secondary" className="text-lg px-4 py-2">
-            {filteredClientes.length} contato{filteredClientes.length !== 1 ? "s" : ""}
+            {currentClientes.length} contato{currentClientes.length !== 1 ? "s" : ""}
           </Badge>
         </div>
 
@@ -472,6 +514,18 @@ export default function SupervisorContatos() {
                 <Filter className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium text-muted-foreground">Filtros:</span>
               </div>
+
+              {/* Source filter */}
+              <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as any)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Origem" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os números</SelectItem>
+                  <SelectItem value="principal">Número Principal</SelectItem>
+                  <SelectItem value="pessoal">Número Pessoal</SelectItem>
+                </SelectContent>
+              </Select>
               
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[180px]">
@@ -514,7 +568,7 @@ export default function SupervisorContatos() {
                 </SelectContent>
               </Select>
 
-              {hasActiveFilters && (
+              {(hasActiveFilters || sourceFilter !== "all") && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -522,6 +576,7 @@ export default function SupervisorContatos() {
                     setStatusFilter("all");
                     setDateFilter("all");
                     setMarcaFilter("all");
+                    setSourceFilter("all");
                   }}
                 >
                   Limpar filtros
@@ -532,187 +587,191 @@ export default function SupervisorContatos() {
         </Card>
 
         {/* Tabs */}
-        <Tabs defaultValue="hierarchy" className="flex-1 flex flex-col min-h-0">
-          <TabsList className="shrink-0">
-            <TabsTrigger value="hierarchy">Por Hierarquia</TabsTrigger>
-            <TabsTrigger value="all">Todos os Contatos</TabsTrigger>
+        <Tabs defaultValue="todos" className="flex-1 flex flex-col min-h-0">
+          <TabsList className="w-fit shrink-0">
+            <TabsTrigger value="todos">Todos os Contatos</TabsTrigger>
+            <TabsTrigger value="hierarquia">Por Hierarquia</TabsTrigger>
           </TabsList>
 
-          {/* Hierarchy View */}
-          <TabsContent value="hierarchy" className="flex-1 min-h-0 mt-4">
-            <ScrollArea className="h-full">
-              {isLoading ? (
-                <Card>
-                  <CardContent className="pt-6 text-center">
-                    <p className="text-muted-foreground">Carregando contatos...</p>
-                  </CardContent>
-                </Card>
-              ) : Object.keys(groupedData).length === 0 ? (
-                <Card className="border-dashed">
-                  <CardContent className="pt-6 text-center">
-                    <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                    <p className="text-muted-foreground">
-                      Nenhum vendedor atribuído a você ainda.
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-3">
-                  {/* Unassigned Section */}
-                  {unassignedClientes.length > 0 && (
-                    <Card className="overflow-hidden border-amber-500/50 bg-gradient-to-r from-amber-500/5 to-orange-500/5">
-                      <Collapsible open={expandedMarcas.has('__unassigned__')} onOpenChange={() => toggleMarca('__unassigned__')}>
-                        <CollapsibleTrigger asChild>
-                          <CardHeader className="cursor-pointer hover:bg-amber-500/10 transition-colors py-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                {expandedMarcas.has('__unassigned__') ? (
-                                  <ChevronDown className="h-5 w-5 text-amber-600" />
-                                ) : (
-                                  <ChevronRight className="h-5 w-5 text-amber-600" />
-                                )}
-                                <div className="h-10 w-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                                  <AlertCircle className="h-5 w-5 text-amber-600" />
-                                </div>
-                                <div>
-                                  <CardTitle className="text-lg text-amber-700">Não Atribuídos</CardTitle>
-                                  <p className="text-sm text-amber-600/80">
-                                    Contatos aguardando atribuição de vendedor
-                                  </p>
-                                </div>
-                              </div>
-                              <Badge className="bg-amber-500/20 text-amber-700 border-amber-500/30">
-                                {unassignedClientes.length} contato(s)
-                              </Badge>
-                            </div>
-                          </CardHeader>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <CardContent className="pt-0 pb-4">
-                            <div className="grid gap-3 md:grid-cols-2">
-                              {unassignedClientes.map(cliente => (
-                                <ClienteCard key={cliente.id} cliente={cliente} showUnassignedBadge={false} />
-                              ))}
-                            </div>
-                          </CardContent>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    </Card>
-                  )}
+          <TabsContent value="todos" className="flex-1 min-h-0 mt-4">
+            <ScrollArea className="h-[calc(100vh-500px)]">
+              <div className="grid gap-4 pb-4">
+                {isLoading ? (
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <p className="text-muted-foreground">Carregando contatos...</p>
+                    </CardContent>
+                  </Card>
+                ) : currentClientes.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="pt-6 text-center">
+                      <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                      <p className="text-muted-foreground">
+                        {searchTerm || hasActiveFilters || sourceFilter !== "all"
+                          ? "Nenhum contato encontrado com esses critérios."
+                          : "Nenhum contato encontrado."}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  currentClientes.map((cliente) => (
+                    <ClienteCard key={cliente.id} cliente={cliente} showSourceBadge={sourceFilter === "all"} />
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </TabsContent>
 
-                  {/* Grouped by Marca */}
-                  {Object.entries(groupedData).map(([marca, vendedoresData]) => {
-                    const totalContatos = Object.values(vendedoresData).reduce((sum, v) => sum + v.clientes.length, 0);
-                    const isMarcaExpanded = expandedMarcas.has(marca);
-                    
-                    return (
-                      <Card key={marca} className="overflow-hidden">
-                        <Collapsible open={isMarcaExpanded} onOpenChange={() => toggleMarca(marca)}>
-                          <CollapsibleTrigger asChild>
-                            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+          <TabsContent value="hierarquia" className="flex-1 min-h-0 mt-4">
+            <ScrollArea className="h-[calc(100vh-500px)]">
+              <div className="space-y-4 pb-4">
+                {isLoading ? (
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <p className="text-muted-foreground">Carregando hierarquia...</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <>
+                    {/* Unassigned Section - only show when viewing all or principal */}
+                    {(sourceFilter === "all" || sourceFilter === "principal") && unassignedClientes.length > 0 && (
+                      <Collapsible defaultOpen>
+                        <Card className="border-amber-500/50 bg-amber-500/5">
+                          <CollapsibleTrigger className="w-full">
+                            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                  {isMarcaExpanded ? (
-                                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                                  ) : (
-                                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                                  )}
-                                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                                    <Car className="h-5 w-5 text-primary" />
+                                  <div className="p-2 rounded-lg bg-amber-500/10">
+                                    <AlertCircle className="h-5 w-5 text-amber-600" />
                                   </div>
-                                  <div>
-                                    <CardTitle className="text-lg">{marca}</CardTitle>
+                                  <div className="text-left">
+                                    <CardTitle className="text-lg text-amber-600">Não Atribuídos</CardTitle>
                                     <p className="text-sm text-muted-foreground">
-                                      {Object.keys(vendedoresData).length} vendedor(es) • {totalContatos} contato(s)
+                                      Contatos aguardando atribuição
                                     </p>
                                   </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge className="bg-amber-500/20 text-amber-600 border-amber-500/30">
+                                    {unassignedClientes.length} contato{unassignedClientes.length !== 1 ? "s" : ""}
+                                  </Badge>
+                                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
                                 </div>
                               </div>
                             </CardHeader>
                           </CollapsibleTrigger>
                           <CollapsibleContent>
-                            <CardContent className="pt-0 space-y-3">
-                              {Object.entries(vendedoresData).map(([vendedorId, { vendedor, clientes: vendedorClientes }]) => {
-                                const isVendedorExpanded = expandedVendedores.has(vendedorId);
-                                
-                                return (
-                                  <Card key={vendedorId} className="border-dashed">
-                                    <Collapsible open={isVendedorExpanded} onOpenChange={() => toggleVendedor(vendedorId)}>
-                                      <CollapsibleTrigger asChild>
-                                        <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors py-2">
-                                          <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                              {isVendedorExpanded ? (
-                                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                              ) : (
-                                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                              )}
-                                              <User className="h-4 w-4 text-muted-foreground" />
-                                              <span className="font-medium">{vendedor.nome}</span>
-                                            </div>
-                                            <Badge variant="outline">
-                                              {vendedorClientes.length} contato(s)
-                                            </Badge>
-                                          </div>
-                                        </CardHeader>
-                                      </CollapsibleTrigger>
-                                      <CollapsibleContent>
-                                        <CardContent className="pt-0 pb-3">
-                                          {vendedorClientes.length === 0 ? (
-                                            <p className="text-sm text-muted-foreground text-center py-4">
-                                              Nenhum contato atribuído
-                                            </p>
-                                          ) : (
-                                            <div className="grid gap-3 md:grid-cols-2">
-                                              {vendedorClientes.map(cliente => (
-                                                <ClienteCard key={cliente.id} cliente={cliente} showUnassignedBadge={false} />
-                                              ))}
-                                            </div>
-                                          )}
-                                        </CardContent>
-                                      </CollapsibleContent>
-                                    </Collapsible>
-                                  </Card>
-                                );
-                              })}
+                            <CardContent className="pt-0">
+                              <div className="grid gap-3">
+                                {unassignedClientes.map((cliente) => (
+                                  <ClienteCard key={cliente.id} cliente={cliente} showUnassignedBadge={false} showSourceBadge={sourceFilter === "all"} />
+                                ))}
+                              </div>
                             </CardContent>
                           </CollapsibleContent>
-                        </Collapsible>
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
-            </ScrollArea>
-          </TabsContent>
+                        </Card>
+                      </Collapsible>
+                    )}
 
-          {/* All Contacts View */}
-          <TabsContent value="all" className="flex-1 min-h-0 mt-4">
-            <ScrollArea className="h-full">
-              {isLoading ? (
-                <Card>
-                  <CardContent className="pt-6 text-center">
-                    <p className="text-muted-foreground">Carregando contatos...</p>
-                  </CardContent>
-                </Card>
-              ) : filteredClientes.length === 0 ? (
-                <Card className="border-dashed">
-                  <CardContent className="pt-6 text-center">
-                    <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                    <p className="text-muted-foreground">
-                      {searchTerm || hasActiveFilters
-                        ? "Nenhum contato encontrado com esses critérios."
-                        : "Nenhum contato registrado ainda."}
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {filteredClientes.map((cliente) => (
-                    <ClienteCard key={cliente.id} cliente={cliente} />
-                  ))}
-                </div>
-              )}
+                    {/* Grouped by Marca > Vendedor */}
+                    {Object.entries(groupedData).map(([marca, vendedoresData]) => {
+                      const totalClientes = Object.values(vendedoresData).reduce(
+                        (sum, v) => sum + v.clientes.length, 0
+                      );
+                      if (totalClientes === 0 && marcaFilter !== "all") return null;
+
+                      return (
+                        <Collapsible
+                          key={marca}
+                          open={expandedMarcas.has(marca)}
+                          onOpenChange={() => toggleMarca(marca)}
+                        >
+                          <Card>
+                            <CollapsibleTrigger className="w-full">
+                              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-primary/10">
+                                      <Car className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div className="text-left">
+                                      <CardTitle className="text-lg">{marca}</CardTitle>
+                                      <p className="text-sm text-muted-foreground">
+                                        {Object.keys(vendedoresData).length} vendedor{Object.keys(vendedoresData).length !== 1 ? "es" : ""}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="secondary">
+                                      {totalClientes} contato{totalClientes !== 1 ? "s" : ""}
+                                    </Badge>
+                                    {expandedMarcas.has(marca) ? (
+                                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                                    ) : (
+                                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                                    )}
+                                  </div>
+                                </div>
+                              </CardHeader>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <CardContent className="pt-0">
+                                <div className="space-y-3">
+                                  {Object.entries(vendedoresData).map(([vendedorId, { vendedor, clientes: vendedorClientes }]) => (
+                                    <Collapsible
+                                      key={vendedorId}
+                                      open={expandedVendedores.has(vendedorId)}
+                                      onOpenChange={() => toggleVendedor(vendedorId)}
+                                    >
+                                      <Card className="border-dashed">
+                                        <CollapsibleTrigger className="w-full">
+                                          <CardHeader className="py-3 cursor-pointer hover:bg-muted/30 transition-colors">
+                                            <div className="flex items-center justify-between">
+                                              <div className="flex items-center gap-2">
+                                                <Users className="h-4 w-4 text-muted-foreground" />
+                                                <span className="font-medium">{vendedor.nome}</span>
+                                              </div>
+                                              <div className="flex items-center gap-2">
+                                                <Badge variant="outline">
+                                                  {vendedorClientes.length} contato{vendedorClientes.length !== 1 ? "s" : ""}
+                                                </Badge>
+                                                {expandedVendedores.has(vendedorId) ? (
+                                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                                ) : (
+                                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                                )}
+                                              </div>
+                                            </div>
+                                          </CardHeader>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent>
+                                          <CardContent className="pt-0">
+                                            {vendedorClientes.length === 0 ? (
+                                              <p className="text-sm text-muted-foreground text-center py-4">
+                                                Nenhum contato atribuído
+                                              </p>
+                                            ) : (
+                                              <div className="grid gap-3">
+                                                {vendedorClientes.map((cliente) => (
+                                                  <ClienteCard key={cliente.id} cliente={cliente} showSourceBadge={sourceFilter === "all"} />
+                                                ))}
+                                              </div>
+                                            )}
+                                          </CardContent>
+                                        </CollapsibleContent>
+                                      </Card>
+                                    </Collapsible>
+                                  ))}
+                                </div>
+                              </CardContent>
+                            </CollapsibleContent>
+                          </Card>
+                        </Collapsible>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
             </ScrollArea>
           </TabsContent>
         </Tabs>
