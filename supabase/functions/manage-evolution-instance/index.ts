@@ -167,6 +167,7 @@ serve(async (req) => {
       console.log('Configuring webhook for new instance:', instanceName, 'URL:', webhookUrl);
       
       try {
+        // Evolution API v2 format for webhook configuration
         const webhookResponse = await fetch(`${apiUrl}/webhook/set/${instanceName}`, {
           method: 'POST',
           headers: {
@@ -174,16 +175,18 @@ serve(async (req) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            enabled: true,
-            url: webhookUrl,
-            webhookByEvents: false,
-            webhookBase64: true,
-            events: [
-              'MESSAGES_UPSERT',
-              'MESSAGES_UPDATE',
-              'CONNECTION_UPDATE',
-              'QRCODE_UPDATED',
-            ],
+            webhook: {
+              enabled: true,
+              url: webhookUrl,
+              webhookByEvents: false,
+              webhookBase64: true,
+              events: [
+                'MESSAGES_UPSERT',
+                'MESSAGES_UPDATE',
+                'CONNECTION_UPDATE',
+                'QRCODE_UPDATED',
+              ],
+            },
           }),
         });
         
@@ -415,7 +418,7 @@ serve(async (req) => {
 
       console.log('Configuring webhook for instance:', instanceName, 'URL:', webhookUrl);
 
-      // Configure webhook in Evolution API
+      // Configure webhook in Evolution API v2 format
       const webhookResponse = await fetch(`${apiUrl}/webhook/set/${instanceName}`, {
         method: 'POST',
         headers: {
@@ -423,17 +426,20 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          url: webhookUrl,
-          webhook_by_events: false,
-          webhook_base64: true,
-          events: [
-            'MESSAGES_UPSERT',
-            'MESSAGES_UPDATE',
-            'MESSAGES_DELETE',
-            'SEND_MESSAGE',
-            'CONNECTION_UPDATE',
-            'QRCODE_UPDATED',
-          ],
+          webhook: {
+            enabled: true,
+            url: webhookUrl,
+            webhookByEvents: false,
+            webhookBase64: true,
+            events: [
+              'MESSAGES_UPSERT',
+              'MESSAGES_UPDATE',
+              'MESSAGES_DELETE',
+              'SEND_MESSAGE',
+              'CONNECTION_UPDATE',
+              'QRCODE_UPDATED',
+            ],
+          },
         }),
       });
 
@@ -491,6 +497,7 @@ serve(async (req) => {
         if (!instanceName) continue;
 
         try {
+          // Evolution API v2 format
           const webhookResponse = await fetch(`${apiUrl}/webhook/set/${instanceName}`, {
             method: 'POST',
             headers: {
@@ -498,17 +505,20 @@ serve(async (req) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              url: webhookUrl,
-              webhook_by_events: false,
-              webhook_base64: true,
-              events: [
-                'MESSAGES_UPSERT',
-                'MESSAGES_UPDATE',
-                'MESSAGES_DELETE',
-                'SEND_MESSAGE',
-                'CONNECTION_UPDATE',
-                'QRCODE_UPDATED',
-              ],
+              webhook: {
+                enabled: true,
+                url: webhookUrl,
+                webhookByEvents: false,
+                webhookBase64: true,
+                events: [
+                  'MESSAGES_UPSERT',
+                  'MESSAGES_UPDATE',
+                  'MESSAGES_DELETE',
+                  'SEND_MESSAGE',
+                  'CONNECTION_UPDATE',
+                  'QRCODE_UPDATED',
+                ],
+              },
             }),
           });
 

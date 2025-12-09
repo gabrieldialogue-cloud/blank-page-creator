@@ -450,7 +450,7 @@ serve(async (req) => {
         if (!instanceName) continue;
         
         try {
-          // Evolution API v2 uses different endpoint and structure
+          // Evolution API v2 format - requires nested webhook object
           const webhookResponse = await fetch(`${apiUrl}/webhook/set/${instanceName}`, {
             method: 'POST',
             headers: {
@@ -458,18 +458,20 @@ serve(async (req) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              enabled: true,
-              url: webhookUrl,
-              webhookByEvents: false,
-              webhookBase64: true,
-              events: [
-                'MESSAGES_UPSERT',
-                'MESSAGES_UPDATE', 
-                'MESSAGES_DELETE',
-                'SEND_MESSAGE',
-                'CONNECTION_UPDATE',
-                'QRCODE_UPDATED',
-              ],
+              webhook: {
+                enabled: true,
+                url: webhookUrl,
+                webhookByEvents: false,
+                webhookBase64: true,
+                events: [
+                  'MESSAGES_UPSERT',
+                  'MESSAGES_UPDATE', 
+                  'MESSAGES_DELETE',
+                  'SEND_MESSAGE',
+                  'CONNECTION_UPDATE',
+                  'QRCODE_UPDATED',
+                ],
+              },
             }),
           });
           
