@@ -30,6 +30,7 @@ interface PersonalNumberChatProps {
 
 export function PersonalNumberChat({ vendedorId, vendedorNome }: PersonalNumberChatProps) {
   const [evolutionInstance, setEvolutionInstance] = useState<string | null>(null);
+  const [evolutionStatus, setEvolutionStatus] = useState<string | null>(null);
   const [evolutionConnected, setEvolutionConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [atendimentos, setAtendimentos] = useState<any[]>([]);
@@ -52,11 +53,15 @@ export function PersonalNumberChat({ vendedorId, vendedorNome }: PersonalNumberC
     const fetchEvolutionInstance = async () => {
       setLoading(true);
       try {
+        console.log('[PersonalNumberChat] Fetching config for vendedorId:', vendedorId);
+        
         const { data, error } = await supabase
           .from('config_vendedores')
           .select('evolution_instance_name, evolution_status')
           .eq('usuario_id', vendedorId)
           .single();
+
+        console.log('[PersonalNumberChat] Config result:', { data, error });
 
         if (error && error.code !== 'PGRST116') {
           console.error('Error fetching vendedor config:', error);
@@ -64,9 +69,15 @@ export function PersonalNumberChat({ vendedorId, vendedorNome }: PersonalNumberC
 
         if (data?.evolution_instance_name) {
           setEvolutionInstance(data.evolution_instance_name);
-          setEvolutionConnected(data.evolution_status === 'connected' || data.evolution_status === 'open');
+          setEvolutionStatus(data.evolution_status || null);
+          // If instance exists, show chat (even with pending_qr)
+          const hasInstance = !!data.evolution_instance_name;
+          setEvolutionConnected(hasInstance);
+          console.log('[PersonalNumberChat] Instance:', data.evolution_instance_name, 'Status:', data.evolution_status, 'HasInstance:', hasInstance);
           // Fetch atendimentos for this instance
           await fetchAtendimentos(data.evolution_instance_name);
+        } else {
+          console.log('[PersonalNumberChat] No evolution instance configured for vendedor');
         }
       } catch (error) {
         console.error('Error:', error);
@@ -80,6 +91,8 @@ export function PersonalNumberChat({ vendedorId, vendedorNome }: PersonalNumberC
 
   const fetchAtendimentos = async (instanceName: string) => {
     try {
+      console.log('[PersonalNumberChat] Fetching atendimentos for instance:', instanceName);
+      
       const { data, error } = await supabase
         .from('atendimentos')
         .select(`
@@ -98,8 +111,16 @@ export function PersonalNumberChat({ vendedorId, vendedorNome }: PersonalNumberC
         .neq('status', 'encerrado')
         .order('updated_at', { ascending: false });
 
+      console.log('[PersonalNumberChat] Atendimentos query result:', { data, error, count: data?.length });
+
       if (error) {
         console.error('Error fetching atendimentos:', error);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        console.log('[PersonalNumberChat] No atendimentos found for this instance');
+        setAtendimentos([]);
         return;
       }
 
@@ -125,6 +146,7 @@ export function PersonalNumberChat({ vendedorId, vendedorNome }: PersonalNumberC
         new Date(b.ultima_mensagem_at).getTime() - new Date(a.ultima_mensagem_at).getTime()
       );
 
+      console.log('[PersonalNumberChat] Final atendimentos list:', sorted.length);
       setAtendimentos(sorted);
     } catch (error) {
       console.error('Error:', error);
@@ -534,8 +556,8 @@ export function PersonalNumberChat({ vendedorId, vendedorNome }: PersonalNumberC
     );
   }
 
-  // Not connected
-  if (!evolutionConnected) {
+  // Not connected - only show if explicitly disconnected
+  if (!evolutionConnected && evolutionInstance) {
     return (
       <Card className="rounded-2xl border-yellow-500/30 bg-gradient-to-br from-yellow-500/5 to-transparent shadow-lg">
         <CardHeader className="border-b border-yellow-500/10">
@@ -575,17 +597,24 @@ export function PersonalNumberChat({ vendedorId, vendedorNome }: PersonalNumberC
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-success bg-gradient-to-br from-success/10 to-transparent">
+        <Card className={`rounded-2xl ${evolutionStatus === 'open' || evolutionStatus === 'connected' ? 'border-success bg-gradient-to-br from-success/10 to-transparent' : 'border-yellow-500 bg-gradient-to-br from-yellow-500/10 to-transparent'}`}>
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm text-success">
-              <Check className="h-4 w-4" />
+            <CardTitle className={`flex items-center gap-2 text-sm ${evolutionStatus === 'open' || evolutionStatus === 'connected' ? 'text-success' : 'text-yellow-500'}`}>
+              {evolutionStatus === 'open' || evolutionStatus === 'connected' ? <Check className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
               Instância
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm font-medium truncate">{evolutionInstance}</p>
-            <Badge variant="outline" className="mt-1 bg-success/10 text-success border-success/30">
-              Conectado
+            <Badge 
+              variant="outline" 
+              className={`mt-1 ${evolutionStatus === 'open' || evolutionStatus === 'connected' 
+                ? 'bg-success/10 text-success border-success/30' 
+                : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30'}`}
+            >
+              {evolutionStatus === 'open' || evolutionStatus === 'connected' ? 'Conectado' : 
+               evolutionStatus === 'pending_qr' ? 'Aguardando QR' : 
+               evolutionStatus === 'connecting' ? 'Conectando...' : 'Desconectado'}
             </Badge>
           </CardContent>
         </Card>
