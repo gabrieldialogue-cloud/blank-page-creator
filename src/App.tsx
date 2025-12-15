@@ -37,6 +37,7 @@ const App = () => (
             <Route path="/configuracoes" element={<Configuracoes />} />
             <Route path="/perfil" element={<Perfil />} />
             <Route path="/super-admin" element={<SuperAdmin />} />
+            <Route path="/superadmin" element={<SuperAdmin />} />
             <Route path="/supervisor" element={<Supervisor />} />
             <Route path="/supervisor/atendimentos" element={<SupervisorAtendimentos />} />
             <Route path="/supervisor/contatos" element={<SupervisorContatos />} />
